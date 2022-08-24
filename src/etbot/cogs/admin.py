@@ -66,16 +66,16 @@ class Admin(commands.Cog):
                             description="Replies with the server's IP.",
                             default_member_permissions=Permissions(administrator=True))
     async def ip(self, inter: ApplicationCommandInteraction) -> None:
-        await inter.response.defer()
+        await inter.response.defer(ephemeral=True)
 
         ipv4: str
         ipv6: str
         ipv4 = request.urlopen('https://v4.ident.me').read().decode('utf8')
         if ipv4 != "":
-            await inter.send(ipv4, ephemeral=True)
+            await inter.send(ipv4)
             return
         ipv6 = request.urlopen('https://v6.ident.me').read().decode('utf8')
         if ipv6 != "":
-            await inter.send(ipv6, ephemeral=True)
+            await inter.send(ipv6)
             return
         await inter.send("Could not get IP.", ephemeral=True)
