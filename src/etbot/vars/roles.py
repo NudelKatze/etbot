@@ -1,6 +1,6 @@
 import sys
 
-from disnake import Role
+from disnake import Role, ApplicationCommandInteraction
 from disnake.ext import commands
 
 this = sys.modules[__name__]
@@ -15,8 +15,8 @@ tribune: Role | None = None
 staff_roles: list[Role] = [emperor, viceroy, palatine]
 
 
-def check_is_staff(ctx: commands.Context) -> bool:
-    return any(role in ctx.author.roles for role in staff_roles)
+def check_is_staff(inter: ApplicationCommandInteraction) -> bool:
+    return any(role in inter.author.roles for role in staff_roles)
 
 
 def initialize_testing_roles(bot: commands.Bot):
