@@ -1,9 +1,8 @@
 import datetime
-import os
-import random
 import uuid
 
-from disnake import Message, Member, User, Guild, Thread, File, NotFound
+import disnake
+from disnake import Message, Member, User, Guild, Thread, File, NotFound, ApplicationCommandInteraction
 from disnake.abc import GuildChannel
 from disnake.ext import commands
 
@@ -73,156 +72,181 @@ class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @commands.command(name="save")
-    @commands.check(roles.check_is_staff)
-    async def save_messages(self, ctx: commands.Context) -> None:
+    @commands.slash_command(
+        name="save",
+        description="Saves all the messages sent by the given user.",
+        default_member_permissions=disnake.Permissions(administrator=True)
+    )
+    async def save_messages(self, inter: ApplicationCommandInteraction, user: User | Member) -> None:
         """
         Saves all messages from a user on a server.
         """
-        await ctx.message.delete()
+        await inter.response.defer()
 
-        reference: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
-        user: User | Member = reference.author
         if user is None:
-            await ctx.send("User not found.")
+            await inter.send("User not found.")
             return
 
         with open(f"transcripts/{user.name}.txt", "w", encoding="utf8") as file:
             file.write(f"{user.name}'s messages as of {datetime.datetime.utcnow()}:\n\n")
 
-        counter = await messages_by_user_in_guild(ctx.guild, user)
+        counter = await messages_by_user_in_guild(inter.guild, user)
 
-        await ctx.send(f"Saved {counter} messages.")
+        await inter.send(f"Saved {counter} messages.")
 
-    @commands.command(name="purge")
-    @commands.check(roles.check_is_staff)
-    async def purge_messages(self, ctx: commands.Context, amount: int) -> None:
+    @commands.slash_command(
+        name="purge",
+        description="Purges the amount of messages specified",
+        default_member_permissions=disnake.Permissions(manage_messages=True)
+    )
+    async def purge_messages(self, inter: ApplicationCommandInteraction, amount: commands.Range[1, ...]) -> None:
         """
         Purges the amount of messages specified.
         """
-        await ctx.message.delete()
+        await inter.response.defer()
 
-        channel: GuildChannel | Thread = ctx.channel
         counter = 0
         time = f"{datetime.datetime.utcnow()}"
-        filename = f"transcripts/{int(random.randint(0, 10000000))}.txt"
+        filename = f"transcripts/{uuid.uuid4()}.txt"
 
         with open(filename, "w", encoding="utf8") as file:
             file.write(f"{time}:\n\n")
-            async for message in channel.history(limit=amount):
+            async for message in inter.channel.history(limit=amount):
                 counter += 1
                 file.write(await make_message_writeable(message))
 
-        await channel.purge(limit=counter)
-        await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
-        os.remove(filename)
+        await inter.channel.purge(limit=counter)  # TODO check if purging and then writing to file works
+        await inter.send(f"Purged {counter} messages.", ephemeral=True)
+        await channels.get_bot_log().send(f"Purged {counter} messages from {inter.channel.name}.", file=File(filename))
+        # os.remove(filename)
 
-    @commands.command(name="purgeAfter", aliases=["purgeafter"])
-    @commands.check(roles.check_is_staff)
-    async def purge_after(self, ctx: commands.Context) -> None:
+    @commands.slash_command(
+        name="purgeafter",
+        description="Purges the amount of messages (no amount -> all) after the referenced message.",
+        default_member_permissions=disnake.Permissions(manage_messages=True)
+    )
+    async def purge_after(self, inter: ApplicationCommandInteraction, reference: Message,
+                          amount: commands.Range[1, ...] | None = None) -> None:
         """
         Purges all messages after the referenced message.
         """
-        await ctx.message.delete()
+        await inter.response.defer()
 
-        channel: GuildChannel | Thread = ctx.channel
-        reference: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
         counter = 0
         time = f"{datetime.datetime.utcnow()}"
-        filename = f"transcripts/{int(random.randint(0, 10000000))}.txt"
+        filename = f"transcripts/{uuid.uuid4()}.txt"
 
         with open(filename, "w", encoding="utf8") as file:
             file.write(f"{time}:\n\n")
 
-            history = await channel.history(limit=100, after=reference).flatten()
+            history = await inter.channel.history(limit=100 if amount is None else amount, after=reference).flatten()
             for message in history:
                 counter += 1
                 file.write(await make_message_writeable(message))
 
-            while not len(history) < 100:
-                history = await channel.history(limit=100, before=history[-1], after=reference).flatten()
+            while len(history) == 100 and amount is None:
+                history = await inter.channel.history(limit=100, before=history[-1], after=reference).flatten()
                 for message in history:
                     counter += 1
                     file.write(await make_message_writeable(message))
 
-        await channel.purge(limit=counter, after=reference)
-        await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
-        os.remove(filename)
+        await inter.channel.purge(limit=counter, after=reference, oldest_first=True)
+        await inter.send(f"Purged {counter} messages.", ephemeral=True)
+        await channels.get_bot_log().send(f"Purged {counter} messages from {inter.channel.name}.", file=File(filename))
+        # os.remove(filename)
 
-    @commands.command(name="purgeBefore", aliases=["purgebefore"])
-    @commands.check(roles.check_is_staff)
-    async def purge_before(self, ctx: commands.Context, amount: int) -> None:
+    @commands.slash_command(
+        name="purgebefore",
+        description="Purges the amount of messages specified",
+        default_member_permissions=disnake.Permissions(manage_messages=True)
+    )
+    async def purge_before(self, inter: ApplicationCommandInteraction, amount: commands.Range[1, ...],
+                           reference: Message) -> None:
         """
         Purges the amount of messages specified before the referenced message.
         """
-        await ctx.message.delete()
+        await inter.response.defer()
 
-        channel: GuildChannel | Thread = ctx.channel
-        reference: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
         counter = 0
         time = f"{datetime.datetime.utcnow()}"
-        filename = f"transcripts/{int(random.randint(0, 10000000))}.txt"
+        filename = f"transcripts/{uuid.uuid4()}.txt"
 
         with open(filename, "w", encoding="utf8") as file:
             file.write(f"{time}:\n\n")
 
-            async for message in channel.history(limit=amount, before=reference):
+            async for message in inter.channel.history(limit=amount, before=reference):
                 counter += 1
                 file.write(await make_message_writeable(message))
 
-        await channel.purge(limit=counter, before=reference)
-        await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
-        os.remove(filename)
+        await inter.channel.purge(limit=counter, before=reference)
+        await inter.send(f"Purged {counter} messages.", ephemeral=True)
+        await channels.get_bot_log().send(f"Purged {counter} messages from {inter.channel.name}.", file=File(filename))
+        # os.remove(filename)
 
-    @commands.command(name="warn")
-    @commands.check(roles.check_is_staff)
-    async def warn(self, ctx: commands.Context, user: User | Member, *, reason: str) -> None:
+    @commands.slash_command(
+        name="warn",
+        description="Warns a user.",
+        default_member_permissions=disnake.Permissions(ban_members=True)
+    )
+    async def warn(self, inter: ApplicationCommandInteraction, user: User | Member, reason: str) -> None:
         """
         Warns a user.
         """
-        await ctx.message.delete()
+        await inter.response.defer()
 
         given: datetime.datetime = datetime.datetime.utcnow()
         expires: datetime.datetime = warnings.generate_expiration(user)
-        warning: warnings.DiscordWarning = warnings.DiscordWarning(user, reason, ctx.author, given, expires)
+        warning: warnings.DiscordWarning = warnings.DiscordWarning(user, reason, inter.author, given, expires)
         warning_amount: int = warnings.add_warning(warning)
 
-        await user.send(f"You have been warned in {ctx.guild.name} for: "
+        await user.send(f"You have been warned in {inter.guild.name} for: "
                         f"\n{reason}")
+        await inter.send(f"Warned {user.name}.")
         await channels.get_moderation_log().send(f"{user.name} has been warned for {reason}."
                                                  f"\nWarnings: {warning_amount} {roles.palatine.mention if warning_amount >= 3 else ''}")
 
-    @commands.command(name="delWarn", aliases=["delwarn"])
-    @commands.check(roles.check_is_staff)
-    async def delwarn(self, ctx: commands.Context, id: str) -> None:
+    @commands.slash_command(
+        name="delwarn",
+        description="Deletes a warning.",
+        default_member_permissions=disnake.Permissions(ban_members=True)
+    )
+    async def delwarn(self, inter: ApplicationCommandInteraction, id: str) -> None:
         """
         Deletes a warning.
         """
+        await inter.response.defer()
+
         id: uuid.UUID = uuid.UUID(id)
 
         try:
             warning: warnings.DiscordWarning = warnings.get_warning(id)
         except Exception:
-            await ctx.send(f"Warning with ID \"{id}\" not found.")
+            await inter.send(f"Warning with ID \"{id}\" not found.")
             return
 
-        if warning.user == ctx.author:
-            await ctx.send("You cannot delete your own warning.")
+        if warning.user == inter.author:
+            await inter.send("You cannot delete your own warning.")
             return
 
         warnings.delete_warning(warning)
-        await ctx.send("Warning deleted.")
+        await inter.send("Warning deleted.")
 
-    @commands.command(name="warnings")
-    @commands.check(roles.check_is_staff)
-    async def warnings(self, ctx: commands.Context, user: User | Member) -> None:
+    # TODO make warnings and my_warnings into subcommands
+    @commands.slash_command(
+        name="warnings",
+        description="Returns all warnings for the user.",
+        default_member_permissions=disnake.Permissions(ban_members=True)
+    )
+    async def warnings(self, inter: ApplicationCommandInteraction, user: User | Member) -> None:
         """
         Returns all warnings for a user
         """
+        await inter.response.defer()
+
         user_warnings = warnings.get_warnings_by_user(user)
 
         if not user_warnings:
-            await ctx.send(f"{user.name} has no warnings.")
+            await inter.send(f"{user.name} has no warnings.")
             return
 
         warnings_message: str = f"{user.name} has {len(user_warnings)} warnings:"
@@ -230,33 +254,45 @@ class Moderation(commands.Cog):
             warnings_message += f"\n{warning}" \
                                 f"\n**--------------------------------------------------**"
 
-        await ctx.send(warnings_message)
+        await inter.send(warnings_message)
 
-    @commands.command(name="allWarnings", aliases=["allwarnings"])
-    @commands.check(roles.check_is_staff)
-    async def all_warnings(self, ctx: commands.Context) -> None:
+    @commands.slash_command(
+        name="allwarnings",
+        description="Returns all warnings.",
+        default_member_permissions=disnake.Permissions(ban_members=True)
+    )
+    async def all_warnings(self, inter: ApplicationCommandInteraction) -> None:
         """
         Returns all warnings.
         """
+        await inter.response.defer()
+
         warnings_message: str = "All warnings:"
         for warning in warnings.get_all_warnings():
             warnings_message += f"\n{warning}" \
                                 f"\n**--------------------------------------------------**"
 
-        await ctx.send(warnings_message)
+        await inter.send(warnings_message)
 
-    @commands.command(name="myWarnings", aliases=["mywarnings"])
-    async def my_warnings(self, ctx: commands.Context) -> None:
+    @commands.slash_command(
+        name="mywarnings",
+        description="Returns all of your warnings."
+    )
+    async def my_warnings(self, inter: ApplicationCommandInteraction) -> None:
         """
         Returns all warnings for the user.
         """
-        user_warnings = warnings.get_warnings_by_user(ctx.author)
+        await inter.response.defer()
+
+        user_warnings = warnings.get_warnings_by_user(inter.author)
 
         if not user_warnings:
-            await ctx.reply(f"{ctx.author.name} has no warnings.")
+            await inter.send(f"{inter.author.name} has no warnings.")
             return
 
-        warnings_message: str = f"{ctx.author.name} has {len(user_warnings)} warnings:"
+        warnings_message: str = f"{inter.author.name} has {len(user_warnings)} warnings:"
         for warning in user_warnings:
             warnings_message += f"\n{warning}" \
                                 f"\n**--------------------------------------------------**"
+
+        await inter.send(warnings_message, ephemeral=True)
