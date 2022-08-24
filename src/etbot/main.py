@@ -4,7 +4,8 @@ import logging
 import os
 import sys
 
-from disnake.ext import commands
+from disnake import Intents
+from disnake.ext.commands import Bot
 
 from vars import channels, emojis, roles, messages, warnings
 
@@ -13,8 +14,11 @@ with open("config.json", 'r') as config_file:
     token = json_config["token"]
     test_guilds = json_config["test_guilds"]
 
-bot = commands.Bot(
+intents: Intents = Intents(messages=True, message_content=True, guilds=True, guild_messages=True)
+
+bot: Bot = Bot(
     command_prefix='&',
+    intents=intents,
     sync_commands_debug=True,
     test_guilds=test_guilds
 )
