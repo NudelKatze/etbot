@@ -1,5 +1,6 @@
 from urllib import request
 
+from disnake import ApplicationCommandInteraction, Permissions
 from disnake.ext import commands
 from disnake.ext.commands import ExtensionNotFound, ExtensionAlreadyLoaded, ExtensionFailed, NoEntryPointError, \
     ExtensionNotLoaded
@@ -14,59 +15,67 @@ class Admin(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @commands.command(name="cogs", aliases=["Cogs"],
-                      brief="Replies with a list of all the loaded cogs.")
-    @commands.has_guild_permissions(administrator=True)
-    async def cogs(self, ctx: commands.Context):
-        cogs: str = str(list(self.bot.cogs.keys()))
-        await ctx.send(cogs)
+    @commands.slash_command(name="cogs",
+                            description="Replies with a list of all the loaded cogs.",
+                            default_member_permissions=Permissions(administrator=True))
+    async def cogs(self, inter: ApplicationCommandInteraction) -> None:
+        await inter.response.defer()
 
-    @commands.command(name="load", aliases=["Load"],
-                      brief="Loads a cog.")
-    @commands.has_guild_permissions(administrator=True)
-    async def load(self, ctx: commands.Context, cog: str):
+        cogs: str = str(list(self.bot.cogs.keys()))
+        await inter.send(cogs)
+
+    @commands.slash_command(name="load",
+                            description="Loads a cog.",
+                            default_member_permissions=Permissions(administrator=True))
+    async def load(self, inter: ApplicationCommandInteraction, cog: str) -> None:
+        await inter.response.defer()
+
         try:
             self.bot.load_extension(cog)
         except (ExtensionNotFound, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionFailed) as e:
-            await ctx.send(e)
+            await inter.send(e, ephemeral=True)
             return
-        await ctx.send("Cog loaded.")
+        await inter.send(f"{cog} loaded.")
 
-    @commands.command(name="unload", aliases=["Unload"],
-                      brief="Unloads a cog.")
-    @commands.has_guild_permissions(administrator=True)
-    async def unload(self, ctx: commands.Context, cog: str):
+    @commands.slash_command(name="unload",
+                            description="Unloads a cog.",
+                            default_member_permissions=Permissions(administrator=True))
+    async def unload(self, inter: ApplicationCommandInteraction, cog: str) -> None:
         try:
             self.bot.unload_extension(cog)
         except (ExtensionNotFound, ExtensionNotLoaded) as e:
-            await ctx.send(e)
+            await inter.send(e, ephemeral=True)
             return
-        await ctx.send("Cog unloaded.")
+        await inter.send(f"{cog} unloaded.")
 
-    @commands.command(name="reload", aliases=["Reload"],
-                      brief="RelLoads a cog.")
-    @commands.has_guild_permissions(administrator=True)
-    async def reload(self, ctx: commands.Context, cog: str):
+    @commands.slash_command(name="reload",
+                            description="Reloads a cog.",
+                            default_member_permissions=Permissions(administrator=True))
+    async def reload(self, inter: ApplicationCommandInteraction, cog: str) -> None:
+        await inter.response.defer()
+
         try:
             self.bot.unload_extension(cog)
             self.bot.load_extension(cog)
         except (ExtensionNotFound, ExtensionNotLoaded, ExtensionAlreadyLoaded, NoEntryPointError, ExtensionFailed) as e:
-            await ctx.send(e)
+            await inter.send(e, ephemeral=True)
             return
-        await ctx.send("Cog reloaded.")
+        await inter.send(f"{cog} reloaded.")
 
-    @commands.command(name="ip", aliases=["IP"],
-                      brief="Replies with the server's IP.")
-    @commands.has_guild_permissions(administrator=True)
-    async def ip(self, ctx: commands.Context):
+    @commands.slash_command(name="ip",
+                            description="Replies with the server's IP.",
+                            default_member_permissions=Permissions(administrator=True))
+    async def ip(self, inter: ApplicationCommandInteraction) -> None:
+        await inter.response.defer()
+
         ipv4: str
         ipv6: str
         ipv4 = request.urlopen('https://v4.ident.me').read().decode('utf8')
         if ipv4 != "":
-            await ctx.reply(ipv4)
+            await inter.send(ipv4, ephemeral=True)
             return
         ipv6 = request.urlopen('https://v6.ident.me').read().decode('utf8')
         if ipv6 != "":
-            await ctx.reply(ipv6)
+            await inter.send(ipv6, ephemeral=True)
             return
-        await ctx.reply("Could not get IP.")
+        await inter.send("Could not get IP.", ephemeral=True)
