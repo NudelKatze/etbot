@@ -1,8 +1,7 @@
 import datetime
 import uuid
 
-import disnake
-from disnake import Message, Member, User, Guild, Thread, File, NotFound, ApplicationCommandInteraction
+from disnake import Message, Member, User, Guild, Thread, File, NotFound, ApplicationCommandInteraction, Permissions
 from disnake.abc import GuildChannel
 from disnake.ext import commands
 
@@ -75,7 +74,7 @@ class Moderation(commands.Cog):
     @commands.slash_command(
         name="save",
         description="Saves all the messages sent by the given user.",
-        default_member_permissions=disnake.Permissions(administrator=True)
+        default_member_permissions=Permissions(administrator=True)
     )
     async def save_messages(self, inter: ApplicationCommandInteraction, user: User | Member) -> None:
         """
@@ -97,7 +96,7 @@ class Moderation(commands.Cog):
     @commands.slash_command(
         name="purge",
         description="Purges the amount of messages specified",
-        default_member_permissions=disnake.Permissions(manage_messages=True)
+        default_member_permissions=Permissions(manage_messages=True)
     )
     async def purge_messages(self, inter: ApplicationCommandInteraction, amount: commands.Range[1, ...]) -> None:
         """
@@ -123,7 +122,7 @@ class Moderation(commands.Cog):
     @commands.slash_command(
         name="purgeafter",
         description="Purges the amount of messages (no amount -> all) after the referenced message.",
-        default_member_permissions=disnake.Permissions(manage_messages=True)
+        default_member_permissions=Permissions(manage_messages=True)
     )
     async def purge_after(self, inter: ApplicationCommandInteraction, reference: Message,
                           amount: commands.Range[1, ...] | None = None) -> None:
@@ -158,7 +157,7 @@ class Moderation(commands.Cog):
     @commands.slash_command(
         name="purgebefore",
         description="Purges the amount of messages specified",
-        default_member_permissions=disnake.Permissions(manage_messages=True)
+        default_member_permissions=Permissions(manage_messages=True)
     )
     async def purge_before(self, inter: ApplicationCommandInteraction, amount: commands.Range[1, ...],
                            reference: Message) -> None:
@@ -186,7 +185,7 @@ class Moderation(commands.Cog):
     @commands.slash_command(
         name="warn",
         description="Warns a user.",
-        default_member_permissions=disnake.Permissions(ban_members=True)
+        default_member_permissions=Permissions(ban_members=True)
     )
     async def warn(self, inter: ApplicationCommandInteraction, user: User | Member, reason: str) -> None:
         """
@@ -208,7 +207,7 @@ class Moderation(commands.Cog):
     @commands.slash_command(
         name="delwarn",
         description="Deletes a warning.",
-        default_member_permissions=disnake.Permissions(ban_members=True)
+        default_member_permissions=Permissions(ban_members=True)
     )
     async def delwarn(self, inter: ApplicationCommandInteraction, id: str) -> None:
         """
@@ -235,7 +234,7 @@ class Moderation(commands.Cog):
     @commands.slash_command(
         name="warnings",
         description="Returns all warnings for the user.",
-        default_member_permissions=disnake.Permissions(ban_members=True)
+        default_member_permissions=Permissions(ban_members=True)
     )
     async def warnings(self, inter: ApplicationCommandInteraction, user: User | Member) -> None:
         """
@@ -259,7 +258,7 @@ class Moderation(commands.Cog):
     @commands.slash_command(
         name="allwarnings",
         description="Returns all warnings.",
-        default_member_permissions=disnake.Permissions(ban_members=True)
+        default_member_permissions=Permissions(ban_members=True)
     )
     async def all_warnings(self, inter: ApplicationCommandInteraction) -> None:
         """
@@ -287,7 +286,7 @@ class Moderation(commands.Cog):
         user_warnings = warnings.get_warnings_by_user(inter.author)
 
         if not user_warnings:
-            await inter.send(f"{inter.author.name} has no warnings.")
+            await inter.send(f"You has no warnings.")
             return
 
         warnings_message: str = f"{inter.author.name} has {len(user_warnings)} warnings:"

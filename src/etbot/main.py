@@ -43,7 +43,7 @@ async def on_ready() -> None:
 
 
 def load_extensions() -> None:
-    for filename in os.listdir("./src/etbot/cogs"):
+    for filename in os.listdir("src/etbot/cogs/"):
         if filename.endswith(".py") and filename != "__init__.py":
             bot.load_extension(f"cogs.{filename[:-3]}")
 
