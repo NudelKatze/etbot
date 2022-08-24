@@ -17,7 +17,7 @@ class Admin(commands.Cog):
 
     @commands.slash_command(name="cogs",
                             description="Replies with a list of all the loaded cogs.",
-                            default_member_permissions=Permissions(administrator=True))
+                            default_member_permissions=Permissions.administrator)
     async def cogs(self, inter: ApplicationCommandInteraction) -> None:
         await inter.response.defer()
 
@@ -26,7 +26,7 @@ class Admin(commands.Cog):
 
     @commands.slash_command(name="load",
                             description="Loads a cog.",
-                            default_member_permissions=Permissions(administrator=True))
+                            default_member_permissions=Permissions.administrator)
     async def load(self, inter: ApplicationCommandInteraction, cog: str) -> None:
         await inter.response.defer()
 
@@ -39,7 +39,7 @@ class Admin(commands.Cog):
 
     @commands.slash_command(name="unload",
                             description="Unloads a cog.",
-                            default_member_permissions=Permissions(administrator=True))
+                            default_member_permissions=Permissions.administrator)
     async def unload(self, inter: ApplicationCommandInteraction, cog: str) -> None:
         try:
             self.bot.unload_extension(cog)
@@ -50,7 +50,7 @@ class Admin(commands.Cog):
 
     @commands.slash_command(name="reload",
                             description="Reloads a cog.",
-                            default_member_permissions=Permissions(administrator=True))
+                            default_member_permissions=Permissions.administrator)
     async def reload(self, inter: ApplicationCommandInteraction, cog: str) -> None:
         await inter.response.defer()
 
@@ -64,7 +64,7 @@ class Admin(commands.Cog):
 
     @commands.slash_command(name="ip",
                             description="Replies with the server's IP.",
-                            default_member_permissions=Permissions(administrator=True))
+                            default_member_permissions=Permissions.administrator)
     async def ip(self, inter: ApplicationCommandInteraction) -> None:
         await inter.response.defer()
 

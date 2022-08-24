@@ -71,11 +71,9 @@ class Moderation(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @commands.slash_command(
-        name="save",
-        description="Saves all the messages sent by the given user.",
-        default_member_permissions=Permissions(administrator=True)
-    )
+    @commands.slash_command(name="save",
+                            description="Saves all the messages sent by the given user.",
+                            default_member_permissions=Permissions.administrator)
     async def save_messages(self, inter: ApplicationCommandInteraction, user: User | Member) -> None:
         """
         Saves all messages from a user on a server.
@@ -93,11 +91,9 @@ class Moderation(commands.Cog):
 
         await inter.send(f"Saved {counter} messages.")
 
-    @commands.slash_command(
-        name="purge",
-        description="Purges the amount of messages specified",
-        default_member_permissions=Permissions(manage_messages=True)
-    )
+    @commands.slash_command(name="purge",
+                            description="Purges the amount of messages specified",
+                            default_member_permissions=Permissions.manage_messages)
     async def purge_messages(self, inter: ApplicationCommandInteraction, amount: commands.Range[1, ...]) -> None:
         """
         Purges the amount of messages specified.
@@ -119,11 +115,9 @@ class Moderation(commands.Cog):
         await channels.get_bot_log().send(f"Purged {counter} messages from {inter.channel.name}.", file=File(filename))
         # os.remove(filename)
 
-    @commands.slash_command(
-        name="purgeafter",
-        description="Purges the amount of messages (no amount -> all) after the referenced message.",
-        default_member_permissions=Permissions(manage_messages=True)
-    )
+    @commands.slash_command(name="purgeafter",
+                            description="Purges the amount of messages (no amount -> all) after the referenced message.",
+                            default_member_permissions=Permissions.manage_messages)
     async def purge_after(self, inter: ApplicationCommandInteraction, reference: Message,
                           amount: commands.Range[1, ...] | None = None) -> None:
         """
@@ -154,11 +148,9 @@ class Moderation(commands.Cog):
         await channels.get_bot_log().send(f"Purged {counter} messages from {inter.channel.name}.", file=File(filename))
         # os.remove(filename)
 
-    @commands.slash_command(
-        name="purgebefore",
-        description="Purges the amount of messages specified",
-        default_member_permissions=Permissions(manage_messages=True)
-    )
+    @commands.slash_command(name="purgebefore",
+                            description="Purges the amount of messages specified",
+                            default_member_permissions=Permissions.manage_messages)
     async def purge_before(self, inter: ApplicationCommandInteraction, amount: commands.Range[1, ...],
                            reference: Message) -> None:
         """
@@ -182,11 +174,9 @@ class Moderation(commands.Cog):
         await channels.get_bot_log().send(f"Purged {counter} messages from {inter.channel.name}.", file=File(filename))
         # os.remove(filename)
 
-    @commands.slash_command(
-        name="warn",
-        description="Warns a user.",
-        default_member_permissions=Permissions(ban_members=True)
-    )
+    @commands.slash_command(name="warn",
+                            description="Warns a user.",
+                            default_member_permissions=Permissions.ban_members)
     async def warn(self, inter: ApplicationCommandInteraction, user: User | Member, reason: str) -> None:
         """
         Warns a user.
@@ -204,11 +194,9 @@ class Moderation(commands.Cog):
         await channels.get_moderation_log().send(f"{user.name} has been warned for {reason}."
                                                  f"\nWarnings: {warning_amount} {roles.palatine.mention if warning_amount >= 3 else ''}")
 
-    @commands.slash_command(
-        name="delwarn",
-        description="Deletes a warning.",
-        default_member_permissions=Permissions(ban_members=True)
-    )
+    @commands.slash_command(name="delwarn",
+                            description="Deletes a warning.",
+                            default_member_permissions=Permissions.ban_members)
     async def delwarn(self, inter: ApplicationCommandInteraction, id: str) -> None:
         """
         Deletes a warning.
@@ -231,11 +219,9 @@ class Moderation(commands.Cog):
         await inter.send("Warning deleted.")
 
     # TODO make warnings and my_warnings into subcommands
-    @commands.slash_command(
-        name="warnings",
-        description="Returns all warnings for the user.",
-        default_member_permissions=Permissions(ban_members=True)
-    )
+    @commands.slash_command(name="warnings",
+                            description="Returns all warnings for the user.",
+                            default_member_permissions=Permissions.ban_members)
     async def warnings(self, inter: ApplicationCommandInteraction, user: User | Member) -> None:
         """
         Returns all warnings for a user
@@ -255,11 +241,9 @@ class Moderation(commands.Cog):
 
         await inter.send(warnings_message)
 
-    @commands.slash_command(
-        name="allwarnings",
-        description="Returns all warnings.",
-        default_member_permissions=Permissions(ban_members=True)
-    )
+    @commands.slash_command(name="allwarnings",
+                            description="Returns all warnings.",
+                            default_member_permissions=Permissions.ban_members)
     async def all_warnings(self, inter: ApplicationCommandInteraction) -> None:
         """
         Returns all warnings.
@@ -273,10 +257,8 @@ class Moderation(commands.Cog):
 
         await inter.send(warnings_message)
 
-    @commands.slash_command(
-        name="mywarnings",
-        description="Returns all of your warnings."
-    )
+    @commands.slash_command(name="mywarnings",
+                            description="Returns all of your warnings.")
     async def my_warnings(self, inter: ApplicationCommandInteraction) -> None:
         """
         Returns all warnings for the user.
