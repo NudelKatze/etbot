@@ -60,7 +60,7 @@ async def find_bill(bot: commands.Bot, bill_number: int, history: list[Message] 
 
 def count_votes(bill: Message) -> str:
     yes, no = -1, -1
-    one, two, three, four, five, six = -1, -1, -1, -1, -1, -1
+    one, two, three, four, five, six, seven, eight, nine, ten = -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
     abstain: int = -1
     for reaction in bill.reactions:
         match reaction.emoji:
@@ -80,6 +80,14 @@ def count_votes(bill: Message) -> str:
                 five += reaction.count
             case emojis.six:
                 six += reaction.count
+            case emojis.seven:
+                seven += reaction.count
+            case emojis.eight:
+                eight += reaction.count
+            case emojis.nine:
+                nine += reaction.count
+            case emojis.ten:
+                ten += reaction.count
             case emojis.abstain_vote:
                 abstain += reaction.count
 
