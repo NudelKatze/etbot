@@ -8,7 +8,17 @@ from disnake.ext import commands
 
 from vars import channels, emojis, roles, messages, warnings
 
-bot = commands.Bot(command_prefix='&')
+with open("config.json", 'r') as config_file:
+    json_config = json.load(config_file)
+    token = json_config["token"]
+    test_guilds = json_config["test_guilds"]
+
+bot = commands.Bot(
+    command_prefix='&',
+    sync_commands_debug=True,
+    test_guilds=test_guilds
+)
+
 testing = False
 
 
@@ -64,8 +74,6 @@ def main(argv: list[str] or None = None) -> None:
 
     load_extensions()
 
-    with open("token.json", 'r') as token_file:
-        token = json.load(token_file)["token"]
     bot.run(token)
 
 

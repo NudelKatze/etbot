@@ -10,6 +10,7 @@ testpaths = [
 
 [tool.mypy]
 mypy_path = "src"
+plugins = "disnake.ext.mypy_plugin"
 check_untyped_defs = true
 disallow_any_generics = true
 ignore_missing_imports = true
