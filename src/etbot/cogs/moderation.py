@@ -73,7 +73,7 @@ class Moderation(commands.Cog):
 
     @commands.slash_command(name="save",
                             description="Saves all the messages sent by the given user.",
-                            default_member_permissions=Permissions.administrator)
+                            default_member_permissions=Permissions(administrator=True))
     async def save_messages(self, inter: ApplicationCommandInteraction, user: User | Member) -> None:
         """
         Saves all messages from a user on a server.
@@ -93,7 +93,7 @@ class Moderation(commands.Cog):
 
     @commands.slash_command(name="purge",
                             description="Purges the amount of messages specified",
-                            default_member_permissions=Permissions.manage_messages)
+                            default_member_permissions=Permissions(manage_messages=True))
     async def purge_messages(self, inter: ApplicationCommandInteraction, amount: commands.Range[1, ...]) -> None:
         """
         Purges the amount of messages specified.
@@ -117,7 +117,7 @@ class Moderation(commands.Cog):
 
     @commands.slash_command(name="purgeafter",
                             description="Purges the amount of messages (no amount -> all) after the referenced message.",
-                            default_member_permissions=Permissions.manage_messages)
+                            default_member_permissions=Permissions(manage_messages=True))
     async def purge_after(self, inter: ApplicationCommandInteraction, reference: Message,
                           amount: commands.Range[1, ...] | None = None) -> None:
         """
@@ -150,7 +150,7 @@ class Moderation(commands.Cog):
 
     @commands.slash_command(name="purgebefore",
                             description="Purges the amount of messages specified",
-                            default_member_permissions=Permissions.manage_messages)
+                            default_member_permissions=Permissions(manage_messages=True))
     async def purge_before(self, inter: ApplicationCommandInteraction, amount: commands.Range[1, ...],
                            reference: Message) -> None:
         """
@@ -176,7 +176,7 @@ class Moderation(commands.Cog):
 
     @commands.slash_command(name="warn",
                             description="Warns a user.",
-                            default_member_permissions=Permissions.ban_members)
+                            default_member_permissions=Permissions(ban_members=True))
     async def warn(self, inter: ApplicationCommandInteraction, user: User | Member, reason: str) -> None:
         """
         Warns a user.
@@ -196,7 +196,7 @@ class Moderation(commands.Cog):
 
     @commands.slash_command(name="delwarn",
                             description="Deletes a warning.",
-                            default_member_permissions=Permissions.ban_members)
+                            default_member_permissions=Permissions(ban_members=True))
     async def delwarn(self, inter: ApplicationCommandInteraction, id: str) -> None:
         """
         Deletes a warning.
@@ -221,7 +221,7 @@ class Moderation(commands.Cog):
     # TODO make warnings and my_warnings into subcommands
     @commands.slash_command(name="warnings",
                             description="Returns all warnings for the user.",
-                            default_member_permissions=Permissions.ban_members)
+                            default_member_permissions=Permissions(ban_members=True))
     async def warnings(self, inter: ApplicationCommandInteraction, user: User | Member) -> None:
         """
         Returns all warnings for a user
@@ -243,7 +243,7 @@ class Moderation(commands.Cog):
 
     @commands.slash_command(name="allwarnings",
                             description="Returns all warnings.",
-                            default_member_permissions=Permissions.ban_members)
+                            default_member_permissions=Permissions(ban_members=True))
     async def all_warnings(self, inter: ApplicationCommandInteraction) -> None:
         """
         Returns all warnings.
