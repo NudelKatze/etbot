@@ -175,7 +175,7 @@ class Senate(commands.Cog):
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
     async def amendment(self, inter: ApplicationCommandInteraction,
-                        bill_number: Param(gt=0, description="Index of the bill to amend"),
+                        bill_number: int = Param(gt=0, description="Index of the bill to amend"),
                         text: str = Param(description="The content of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
@@ -218,7 +218,7 @@ class Senate(commands.Cog):
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
     async def option(self, inter: ApplicationCommandInteraction,
-                     options: Param(gt=1, lt=11, description="Number of options"),
+                     options: int = Param(gt=1, lt=11, description="Number of options"),
                      text: str = Param(description="The content of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
@@ -258,8 +258,8 @@ class Senate(commands.Cog):
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
     async def amendment_option(self, inter: ApplicationCommandInteraction,
-                               bill_number: Param(gt=0, description="Index of bill to amend"),
-                               options: Param(gt=1, lt=11, description="Number of options"),
+                               bill_number: int = Param(gt=0, description="Index of bill to amend"),
+                               options: int = Param(gt=1, lt=11, description="Number of options"),
                                text: str = Param(description="The content of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
