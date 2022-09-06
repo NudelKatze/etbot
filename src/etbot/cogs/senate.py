@@ -1,6 +1,6 @@
 from disnake import Message, ApplicationCommandInteraction, Permissions
 from disnake.ext import commands
-from disnake.ext.commands import MessageNotFound
+from disnake.ext.commands import MessageNotFound, Param
 
 import utils
 from vars import channels, roles, emojis, index
@@ -146,7 +146,8 @@ class Senate(commands.Cog):
                             description="Assembles a bill with the given text.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def bill(self, inter: ApplicationCommandInteraction, text: str) -> None:
+    async def bill(self, inter: ApplicationCommandInteraction,
+                   text: str = Param(description="The content of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         if len(text) > _bill_text_length_limit:
@@ -173,7 +174,9 @@ class Senate(commands.Cog):
                             description="Assembles an amendment with the given text and bill_number.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def amendment(self, inter: ApplicationCommandInteraction, bill_number: int, text: str) -> None:
+    async def amendment(self, inter: ApplicationCommandInteraction,
+                        bill_number: Param(gt=0, description="Index of the bill to amend"),
+                        text: str = Param(description="The content of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         if len(text) > _bill_text_length_limit:
@@ -214,7 +217,9 @@ class Senate(commands.Cog):
                             description="Assembles an option bill with the given text.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def option(self, inter: ApplicationCommandInteraction, options: int, text: str) -> None:
+    async def option(self, inter: ApplicationCommandInteraction,
+                     options: Param(gt=1, lt=11, description="Number of options"),
+                     text: str = Param(description="The content of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         if len(text) > _bill_text_length_limit:
@@ -252,8 +257,10 @@ class Senate(commands.Cog):
                             description="Assembles an option amendment with the given text and bill.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def amendment_option(self, inter: ApplicationCommandInteraction, bill_number: int, options: int,
-                               text: str) -> None:
+    async def amendment_option(self, inter: ApplicationCommandInteraction,
+                               bill_number: Param(gt=0, description="Index of bill to amend"),
+                               options: Param(gt=1, lt=11, description="Number of options"),
+                               text: str = Param(description="The content of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         if len(text) > _bill_text_length_limit:
@@ -304,7 +311,9 @@ class Senate(commands.Cog):
                             description="Edits the bill with the given number.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def edit(self, inter: ApplicationCommandInteraction, bill_index: int, text: str) -> None:
+    async def edit(self, inter: ApplicationCommandInteraction,
+                   bill_index: int = Param(gt=0, description="Index of the bill to edit"),
+                   text: str = Param(description="The content of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         if len(text) > _bill_text_length_limit:
@@ -376,7 +385,8 @@ class Senate(commands.Cog):
                             description="Overrides the saved bill index.",
                             default_member_permissions=Permissions(administrator=True))
     @commands.check(check_senatorial_channels)
-    async def set_index(self, inter: ApplicationCommandInteraction, new_index: int):
+    async def set_index(self, inter: ApplicationCommandInteraction,
+                        new_index: int = Param(gt=0, description="New bill index")) -> None:
         index.set_index(new_index)
         await inter.send(f"Index set to {new_index}.", delete_after=60)
 
@@ -384,7 +394,9 @@ class Senate(commands.Cog):
                             description="Passes the bill with the given number.")
     @commands.has_role("Emperor")
     @commands.check(check_senatorial_channels)
-    async def pass_bill(self, inter: ApplicationCommandInteraction, bill_number: int, comment: str = '') -> None:
+    async def pass_bill(self, inter: ApplicationCommandInteraction,
+                        bill_number: int = Param(gt=0, description="Index of the bill to pass"),
+                        comment: str = Param(default='', description="A comment on the passing of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         # variable set up
@@ -434,7 +446,9 @@ class Senate(commands.Cog):
                             description="Fails the bill with the given number.")
     @commands.has_role("Emperor")
     @commands.check(check_senatorial_channels)
-    async def fail(self, inter: ApplicationCommandInteraction, bill_number: int, comment: str = '') -> None:
+    async def fail(self, inter: ApplicationCommandInteraction,
+                   bill_number: int = Param(gt=0, description="Index of the bill to fail"),
+                   comment: str = Param(default='', description="A comment on the failing of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         # variable set up
@@ -473,7 +487,9 @@ class Senate(commands.Cog):
                             description="Vetoes the bill with the given number.", )
     @commands.has_role("Emperor")
     @commands.check(check_senatorial_channels)
-    async def veto(self, inter: ApplicationCommandInteraction, bill_number: int, comment: str = '') -> None:
+    async def veto(self, inter: ApplicationCommandInteraction,
+                   bill_number: int = Param(gt=0, description="Index of the bill to veto"),
+                   comment: str = Param(default='', description="A comment on the vetoing of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         # variable set up
@@ -512,7 +528,10 @@ class Senate(commands.Cog):
                             description="Forces the bill with the given number through.")
     @commands.has_role("Emperor")
     @commands.check(check_senatorial_channels)
-    async def forcethrough(self, inter: ApplicationCommandInteraction, bill_number: int, comment: str = '') -> None:
+    async def forcethrough(self, inter: ApplicationCommandInteraction,
+                           bill_number: int = Param(gt=0, description="Index of the bill to force through"),
+                           comment: str = Param(default='',
+                                                description="A comment on the forcing through of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         # variable set up
@@ -551,7 +570,9 @@ class Senate(commands.Cog):
                             description="Voids the bill with the given number.")
     @commands.check(roles.check_is_staff)
     @commands.check(check_senatorial_channels)
-    async def void(self, inter: ApplicationCommandInteraction, bill_number: int, comment: str = '') -> None:
+    async def void(self, inter: ApplicationCommandInteraction,
+                   bill_number: int = Param(gt=0, description="Index of the bill to void"),
+                   comment: str = Param(default='', description="A comment on the voiding of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         # variable set up
@@ -590,7 +611,9 @@ class Senate(commands.Cog):
                             description="Unvoids the bill with the given number.")
     @commands.check(roles.check_is_staff)
     @commands.check(check_senatorial_channels)
-    async def unvoid(self, inter: ApplicationCommandInteraction, bill_number: int, comment: str = '') -> None:
+    async def unvoid(self, inter: ApplicationCommandInteraction,
+                     bill_number: int = Param(gt=0, description="Index of the bill to unvoid"),
+                     comment: str = Param(default='', description="A comment on the unvoiding of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         # variable set up
@@ -628,7 +651,10 @@ class Senate(commands.Cog):
     @commands.slash_command(name="withdraw",
                             description="Withdraws the bill with the given number.")
     @commands.check(check_senatorial_channels)
-    async def withdraw(self, inter: ApplicationCommandInteraction, bill_number: int, comment: str = '') -> None:
+    async def withdraw(self, inter: ApplicationCommandInteraction,
+                       bill_number: int = Param(gt=0, description="Index of the bill to withdraw"),
+                       comment: str = Param(default='',
+                                            description="A comment on the withdrawing of the bill")) -> None:
         await inter.response.defer(ephemeral=True)
 
         # variable set up
