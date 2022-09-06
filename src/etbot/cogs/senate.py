@@ -1,6 +1,6 @@
-from disnake import Message, ApplicationCommandInteraction, Permissions
+from disnake import Message
 from disnake.ext import commands
-from disnake.ext.commands import MessageNotFound, Param
+from disnake.ext.commands import MessageNotFound
 
 import utils
 from vars import channels, roles, emojis, index
@@ -19,10 +19,10 @@ async def check_bill_concluded(bill: Message) -> bool:
     return any(reaction.emoji in concluded_emojis for reaction in bill.reactions)
 
 
-def check_senatorial_channels(inter: ApplicationCommandInteraction) -> bool:
+def check_senatorial_channels(ctx: commands.Context) -> bool:
     # Add special channel permissions for specific commands by making a special case for it
     allowed_channels: list[channels]
-    match inter.application_command.qualified_name:
+    match ctx.command.qualified_name:
         case "edit":
             allowed_channels = [channels.get_senate()]
         case "index":
@@ -31,7 +31,7 @@ def check_senatorial_channels(inter: ApplicationCommandInteraction) -> bool:
             allowed_channels = [channels.get_senate(),
                                 channels.get_senatorial_voting(),
                                 channels.get_staff_bot_commands()]
-    return inter.channel in allowed_channels
+    return ctx.message.channel in allowed_channels
 
 
 async def find_bill(bot: commands.Bot, bill_number: int, history: list[Message] | None = None) -> Message | None:
@@ -142,20 +142,22 @@ class Senate(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-    @commands.slash_command(name="bill",
-                            description="Assembles a bill with the given text.")
+    @commands.command(name="bill", aliases=["Bill"],
+                      brief="Assembles a bill with the given text.",
+                      help="Assembles a bill with the given text. \n"
+                           "Including mentioning senators and adding the reactions in the correct order.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def bill(self, inter: ApplicationCommandInteraction,
-                   text: str = Param(description="The content of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def bill(self, ctx: commands.Context, *, text: str):
+        # deletes bill command
+        await ctx.message.delete()
 
         if len(text) > _bill_text_length_limit:
-            await inter.send(f"Bill is too long. Max length is 1800 characters.")
+            await ctx.send(f"Bill is too long. Max length is 1800 characters.")
             return
 
         # variable set up
-        author_mention: str = inter.author.mention
+        author_mention: str = ctx.author.mention
 
         index.increment_index()
         text: str = assemble_bill(text, index.get_index(), author_mention)
@@ -168,36 +170,34 @@ class Senate(commands.Cog):
         await msg.add_reaction(emojis.no_vote)
         await msg.add_reaction(emojis.abstain_vote)
 
-        await inter.send(f"Bill assembled and posted. {emojis.yes_vote}", ephemeral=True)
-
-    @commands.slash_command(name="amendment",
-                            description="Assembles an amendment with the given text and bill_number.")
+    @commands.command(name="amendment", aliases=["Amendment"],
+                      brief="Assembles an amendment with the given text and bill_number.",
+                      help="Assembles an amendment with the given text and bill_number. \n"
+                           "Including mentioning senators and adding the reactions in the correct order.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def amendment(self, inter: ApplicationCommandInteraction,
-                        bill_number: int = Param(gt=0, description="Index of the bill to amend"),
-                        text: str = Param(description="The content of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def amendment(self, ctx: commands.Context, bill_number: int, *, text: str):
+        # deletes bill command
+        await ctx.message.delete()
 
         if len(text) > _bill_text_length_limit:
-            await inter.send(f"Bill is too long. Max length is 1800 characters.")
+            await ctx.send(f"Bill is too long. Max length is 1800 characters.")
             return
 
         # variable set up
-        author: str = inter.author.mention
-        command: str = f"/amendment {bill_number} {text}"
+        author: str = ctx.author.mention
 
         # check that bill_number is valid
         if bill_number > index.get_index():
-            await inter.send(f"No valid bill number was given. {author}"
-                             f"\r\n```{command}```")
+            await channels.get_senate().send(f"No valid bill number was given. {author}"
+                                             f"\r\n```{ctx.message.clean_content}```")
             return
 
         try:
             bill = await find_bill(self.bot, bill_number)
         except MessageNotFound:
-            await inter.send(f"No bill with that index found."
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"No bill with that index found. {author}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         index.increment_index()
@@ -211,33 +211,31 @@ class Senate(commands.Cog):
         await msg.add_reaction(emojis.no_vote)
         await msg.add_reaction(emojis.abstain_vote)
 
-        await inter.send(f"Bill assembled and posted. {emojis.yes_vote}", delete_after=10)
-
-    @commands.slash_command(name="option",
-                            description="Assembles an option bill with the given text.")
+    @commands.command(name="option", aliases=["Option"],
+                      brief="Assembles an option bill with the given text.",
+                      help="Assembles a bill with the given text and amount of options. \n"
+                           "Including mentioning senators and adding the reactions in the correct order.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def option(self, inter: ApplicationCommandInteraction,
-                     options: int = Param(gt=1, lt=11, description="Number of options"),
-                     text: str = Param(description="The content of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def option(self, ctx: commands.Context, options: int, *, text: str):
+        # deletes bill command
+        await ctx.message.delete()
 
         if len(text) > _bill_text_length_limit:
-            await inter.send(f"Bill is too long. Max length is 1800 characters.")
+            await ctx.send(f"Bill is too long. Max length is 1800 characters.")
             return
 
         # variable set up
-        author: str = inter.author.mention
-        command: str = f"/amendment {options} {text}"
+        author: str = ctx.author.mention
 
         # option amount check
         if options < 2:
-            await inter.send(f"Too few options given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"Too few options given. {author}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
         if options > 10:
-            await inter.send(f"Too many options given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"Too many options given. {author}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         index.increment_index()
@@ -251,47 +249,44 @@ class Senate(commands.Cog):
         await msg.add_reaction(emojis.no_vote)
         await msg.add_reaction(emojis.abstain_vote)
 
-        await inter.send(f"Bill assembled and posted. {emojis.yes_vote}", delete_after=10)
-
-    @commands.slash_command(name="amendmentoption",
-                            description="Assembles an option amendment with the given text and bill.")
+    @commands.command(name="amendmentoption", aliases=["Amendmentoption"],
+                      brief="Assembles an option amendment with the given text and bill.",
+                      help="Assembles an amendment with the given text and bill_number and amount of options. \n"
+                           "Including mentioning senators and adding the reactions in the correct order.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def amendment_option(self, inter: ApplicationCommandInteraction,
-                               bill_number: int = Param(gt=0, description="Index of bill to amend"),
-                               options: int = Param(gt=1, lt=11, description="Number of options"),
-                               text: str = Param(description="The content of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def amendment_option(self, ctx: commands.Context, bill_number: int, options: int, *, text: str):
+        # deletes bill command
+        await ctx.message.delete()
 
         if len(text) > _bill_text_length_limit:
-            await inter.send(f"Bill is too long. Max length is 1800 characters.")
+            await ctx.send(f"Bill is too long. Max length is 1800 characters.")
             return
 
         # variable set up
-        author: str = inter.author.mention
-        command: str = f"/amendment {bill_number} {options} {text}"
+        author: str = ctx.author.mention
 
         # option amount check
         if options < 2:
-            await inter.send(f"Too few options given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"Too few options given. {author}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
         if options > 10:
-            await inter.send(f"Too many options given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"Too many options given. {author}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         # check that bill_number is valid
         if bill_number > index.get_index():
-            await inter.send(f"No valid bill number was given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"No valid bill number was given. {author}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         try:
             bill = await find_bill(self.bot, bill_number)
-        except MessageNotFound:
-            await inter.send(f"No bill with that index found. {author}"
-                             f"\r\n```{command}```")
+        except MessageNotFound as e:
+            await ctx.channel.send(f"No bill with that index found. {author}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         index.increment_index()
@@ -305,29 +300,27 @@ class Senate(commands.Cog):
         await msg.add_reaction(emojis.no_vote)
         await msg.add_reaction(emojis.abstain_vote)
 
-        await inter.send(f"Bill assembled and posted. {emojis.yes_vote}", delete_after=10)
-
-    @commands.slash_command(name="edit",
-                            description="Edits the bill with the given number.")
+    @commands.command(name="edit", aliases=["Edit"],
+                      brief="Edits the bill with the given number.",
+                      help="Edits the bill with the given number. \n"
+                           "Will return an error if you are not the original author of the bill to be edited.")
     @commands.has_role("Senator")
     @commands.check(check_senatorial_channels)
-    async def edit(self, inter: ApplicationCommandInteraction,
-                   bill_index: int = Param(gt=0, description="Index of the bill to edit"),
-                   text: str = Param(description="The content of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def edit(self, ctx: commands.Context, bill_index: int, *, text: str):
+        # deletes bill command
+        await ctx.message.delete()
 
         if len(text) > _bill_text_length_limit:
-            await inter.send(f"Bill is too long. Max length is 1800 characters.")
+            await ctx.send(f"Bill is too long. Max length is 1800 characters.")
             return
 
         # variable set up
-        author: str = inter.author.mention
-        command: str = f"/amendment {bill_index} {text}"
+        author: str = ctx.author.mention
 
         # check that bill_number is valid
         if bill_index > index.get_index():
-            await inter.send(f"No valid bill number was given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"No valid bill number was given. {author}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         is_amendment = False
@@ -336,13 +329,13 @@ class Senate(commands.Cog):
         try:
             original: Message | None = await find_bill(self.bot, bill_index)
         except MessageNotFound:
-            await inter.send(f"No bill with that index found. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"No bill with that index found. {author}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
         # check that the bill isn't closed already
         if await check_bill_concluded(original):
-            await inter.send(f"You cannot edit an already closed bill. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"You cannot edit an already closed bill. {author}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         content: list[str] | None = original.content.split(' ')
@@ -361,8 +354,8 @@ class Senate(commands.Cog):
 
         # error message
         if author != bill_author:
-            await inter.send(f"This is not your Bill. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"This is not your Bill. {author}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         # assemble new message
@@ -377,50 +370,50 @@ class Senate(commands.Cog):
             await channels.get_senate().send(f"Previous wording: "
                                              f"\r\n```{changes_string}```"
                                              f"\r\nSuccess. {author}")
-            await inter.send(f"Bill assembled and posted. {emojis.yes_vote}", delete_after=10)
         else:
-            await inter.send("A bug seems to have crept itself into the code.", delete_after=10)
+            await channels.get_senate().send("A bug seems to have crept itself into the code.")
 
-    @commands.slash_command(name="index",
-                            description="Overrides the saved bill index.",
-                            default_member_permissions=Permissions(administrator=True))
+    @commands.command(name="index", aliases=["Index"],
+                      brief="Overrides the saved bill index.",
+                      help="Overrides the saved bill index. \n"
+                           "Only to be used in case of an error with the automatic counting.")
+    @commands.has_guild_permissions(administrator=True)
     @commands.check(check_senatorial_channels)
-    async def set_index(self, inter: ApplicationCommandInteraction,
-                        new_index: int = Param(gt=0, description="New bill index")) -> None:
+    async def set_index(self, ctx: commands.Context, new_index: int):
         index.set_index(new_index)
-        await inter.send(f"Index set to {new_index}.", delete_after=60)
+        msg: Message = await ctx.channel.send(f"Index set to {new_index}.", delete_after=60)
 
-    @commands.slash_command(name="pass",
-                            description="Passes the bill with the given number.")
+    @commands.command(name="pass", aliases=["Pass"],
+                      brief="Passes the bill with the given number.",
+                      help="Passes the bill with the given number. \n"
+                           "Marks the given bill as passed using the appropriate emoji "
+                           "and replies to the bill informing about it's passing.")
     @commands.has_role("Emperor")
     @commands.check(check_senatorial_channels)
-    async def pass_bill(self, inter: ApplicationCommandInteraction,
-                        bill_number: int = Param(gt=0, description="Index of the bill to pass"),
-                        comment: str = Param(default='', description="A comment on the passing of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def pass_bill(self, ctx: commands.Context, bill_number: int, *, comment: str = ''):
+        await ctx.message.delete()
 
         # variable set up
-        author_mention: str = inter.author.mention
-        command: str = f"/pass {bill_number}{(' ' + comment) if comment != '' else ''}"
+        author_mention: str = ctx.author.mention
         if comment != '':
             comment += ' '
 
         # check that bill_number is valid
         if bill_number > index.get_index():
-            await inter.send(f"No valid bill number was given. {author_mention}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"No valid bill number was given. {author_mention}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         try:
             bill = await find_bill(self.bot, bill_number)
-        except MessageNotFound:
-            await inter.send(f"No bill with that index found. {author_mention}"
-                             f"\r\n```{command}```")
+        except MessageNotFound as e:
+            await ctx.channel.send(f"No bill with that index found. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
         # check that the bill isn't closed already
         if await check_bill_concluded(bill):
-            await inter.send(f"Bill has already been concluded. {author_mention}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"Bill has already been concluded. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         await bill.add_reaction(emojis.bill_closed)
@@ -438,41 +431,37 @@ class Senate(commands.Cog):
         wording += count_votes(bill)
         await channels.get_passed_bills().send(wording)
 
-        await inter.send(f"Bill marked and posted to {channels.get_passed_bills().mention}.",
-                         ephemeral=True,
-                         delete_after=10)
-
-    @commands.slash_command(name="fail",
-                            description="Fails the bill with the given number.")
+    @commands.command(name="fail", aliases=["Fail"],
+                      brief="Fails the bill with the given number.",
+                      help="Fails the bill with the given number. \n"
+                           "Marks the given bill as failed using the appropriate emoji "
+                           "and replies to the bill informing about it's failing.")
     @commands.has_role("Emperor")
     @commands.check(check_senatorial_channels)
-    async def fail(self, inter: ApplicationCommandInteraction,
-                   bill_number: int = Param(gt=0, description="Index of the bill to fail"),
-                   comment: str = Param(default='', description="A comment on the failing of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def fail(self, ctx: commands.Context, bill_number: int, *, comment: str = ''):
+        await ctx.message.delete()
 
         # variable set up
-        author_mention: str = inter.author.mention
-        command: str = f"/fail {bill_number}{(' ' + comment) if comment != '' else ''}"
+        author_mention: str = ctx.author.mention
         if comment != '':
             comment += ' '
 
         # check that bill_number is valid
         if bill_number > index.get_index():
-            await inter.send(f"No valid bill number was given. {author_mention}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"No valid bill number was given. {author_mention}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         try:
             bill = await find_bill(self.bot, bill_number)
-        except MessageNotFound:
-            await inter.send(f"No bill with that index found. {author_mention}"
-                             f"\r\n```{command}```")
+        except MessageNotFound as e:
+            await ctx.channel.send(f"No bill with that index found. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
         # check that the bill isn't closed already
         if await check_bill_concluded(bill):
-            await inter.send(f"Bill has already been concluded. {author_mention}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"Bill has already been concluded. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         await bill.add_reaction(emojis.bill_closed)
@@ -481,39 +470,37 @@ class Senate(commands.Cog):
         await bill.reply(f"Bill {bill_number} does not pass."
                          f"\n{comment}{content[len(content) - 3]}")
 
-        await inter.send(f"Bill marked as failed.", delete_after=10)
-
-    @commands.slash_command(name="veto",
-                            description="Vetoes the bill with the given number.", )
+    @commands.command(name="veto", aliases=["Veto"],
+                      brief="Vetoes the bill with the given number.",
+                      help="Vetoes the bill with the given number. \n"
+                           "Marks the given bill as vetoed using the appropriate emoji "
+                           "and replies to the bill informing about it being vetoed.")
     @commands.has_role("Emperor")
     @commands.check(check_senatorial_channels)
-    async def veto(self, inter: ApplicationCommandInteraction,
-                   bill_number: int = Param(gt=0, description="Index of the bill to veto"),
-                   comment: str = Param(default='', description="A comment on the vetoing of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def veto(self, ctx: commands.Context, bill_number: int, *, comment: str = ''):
+        await ctx.message.delete()
 
         # variable set up
-        author: str = inter.author.mention
-        command: str = f"/veto {bill_number}{(' ' + comment) if comment != '' else ''}"
+        author_mention: str = ctx.author.mention
         if comment != '':
             comment += ' '
 
         # check that bill_number is valid
         if bill_number > index.get_index():
-            await inter.send(f"No valid bill number was given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"No valid bill number was given. {author_mention}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         try:
             bill = await find_bill(self.bot, bill_number)
-        except MessageNotFound:
-            await inter.send(f"No bill with that index found. {author}"
-                             f"\r\n```{command}```")
+        except MessageNotFound as e:
+            await ctx.channel.send(f"No bill with that index found. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
         # check that the bill isn't closed already
         if await check_bill_concluded(bill):
-            await inter.send(f"Bill has already been concluded. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"Bill has already been concluded. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         await bill.add_reaction(emojis.imperial_authority)
@@ -522,40 +509,37 @@ class Senate(commands.Cog):
         await bill.reply(f"Bill {bill_number} is vetoed."
                          f"\r\n{comment}{content[len(content) - 3]}")
 
-        await inter.send(f"Bill marked as vetoed.", delete_after=10)
-
-    @commands.slash_command(name="forcethrough",
-                            description="Forces the bill with the given number through.")
+    @commands.command(name="forcethrough", aliases=["Forcethrough"],
+                      brief="Forces the bill with the given number through.",
+                      help="Forces the bill with the given number through. \n"
+                           "Marks the given bill as forced through using the appropriate emoji "
+                           "and replies to the bill informing about it being forced through.")
     @commands.has_role("Emperor")
     @commands.check(check_senatorial_channels)
-    async def forcethrough(self, inter: ApplicationCommandInteraction,
-                           bill_number: int = Param(gt=0, description="Index of the bill to force through"),
-                           comment: str = Param(default='',
-                                                description="A comment on the forcing through of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def forcethrough(self, ctx: commands.Context, bill_number: int, *, comment: str = ''):
+        await ctx.message.delete()
 
         # variable set up
-        author: str = inter.author.mention
-        command: str = f"/forcethrough {bill_number}{(' ' + comment) if comment != '' else ''}"
+        author_mention: str = ctx.author.mention
         if comment != '':
             comment += ' '
 
         # check that bill_number is valid
         if bill_number > index.get_index():
-            await inter.send(f"No valid bill number was given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"No valid bill number was given. {author_mention}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         try:
             bill = await find_bill(self.bot, bill_number)
-        except MessageNotFound:
-            await inter.send(f"No bill with that index found. {author}"
-                             f"\r\n```{command}```")
+        except MessageNotFound as e:
+            await ctx.channel.send(f"No bill with that index found. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
         # check that the bill isn't closed already
         if await check_bill_concluded(bill):
-            await inter.send(f"Bill has already been concluded. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"Bill has already been concluded. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         await bill.add_reaction(emojis.imperial_mandate)
@@ -564,39 +548,37 @@ class Senate(commands.Cog):
         await bill.reply(f"Bill {bill_number} is forced through."
                          f"\r\n{comment}{content[len(content) - 3]}")
 
-        await inter.send(f"Bill marked as forced through.", delete_after=10)
-
-    @commands.slash_command(name="void",
-                            description="Voids the bill with the given number.")
+    @commands.command(name="void", aliases=["Void"],
+                      brief="Voids the bill with the given number.",
+                      help="Voids the bill with the given number. \n"
+                           "Marks the given bill as voided using the appropriate emoji "
+                           "and replies to the bill informing about it being voided.")
     @commands.check(roles.check_is_staff)
     @commands.check(check_senatorial_channels)
-    async def void(self, inter: ApplicationCommandInteraction,
-                   bill_number: int = Param(gt=0, description="Index of the bill to void"),
-                   comment: str = Param(default='', description="A comment on the voiding of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def void(self, ctx: commands.Context, bill_number: int, *, comment: str = ''):
+        await ctx.message.delete()
 
         # variable set up
-        author: str = inter.author.mention
-        command: str = f"/void {bill_number}{(' ' + comment) if comment != '' else ''}"
+        author_mention: str = ctx.author.mention
         if comment != '':
             comment += ' '
 
         # check that bill_number is valid
         if bill_number > index.get_index():
-            await inter.send(f"No valid bill number was given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"No valid bill number was given. {author_mention}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         try:
             bill = await find_bill(self.bot, bill_number)
-        except MessageNotFound:
-            await inter.send(f"No bill with that index found. {author}"
-                             f"\r\n```{command}```")
+        except MessageNotFound as e:
+            await ctx.channel.send(f"No bill with that index found. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
         # check that the bill isn't closed already
         if await check_bill_concluded(bill):
-            await inter.send(f"Bill has already been concluded. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"Bill has already been concluded. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         await bill.add_reaction(emojis.void)
@@ -605,39 +587,37 @@ class Senate(commands.Cog):
         await bill.reply(f"Bill {bill_number} is void."
                          f"\r\n{comment} {content[len(content) - 3]}")
 
-        await inter.send(f"Bill marked as void.", delete_after=10)
-
-    @commands.slash_command(name="unvoid",
-                            description="Unvoids the bill with the given number.")
+    @commands.command(name="unvoid", aliases=["Unvoid"],
+                      brief="Unvoids the bill with the given number.",
+                      help="Unvoids the bill with the given number. \n"
+                           "Unmarks the given bill as voided using the appropriate emoji "
+                           "and replies to the bill informing about it being unvoided.")
     @commands.check(roles.check_is_staff)
     @commands.check(check_senatorial_channels)
-    async def unvoid(self, inter: ApplicationCommandInteraction,
-                     bill_number: int = Param(gt=0, description="Index of the bill to unvoid"),
-                     comment: str = Param(default='', description="A comment on the unvoiding of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def unvoid(self, ctx: commands.Context, bill_number: int, *, comment: str = ''):
+        await ctx.message.delete()
 
         # variable set up
-        author: str = inter.author.mention
-        command: str = f"/unvoid {bill_number}{(' ' + comment) if comment != '' else ''}"
+        author_mention: str = ctx.author.mention
         if comment != '':
             comment += ' '
 
         # check that bill_number is valid
         if bill_number > index.get_index():
-            await inter.send(f"No valid bill number was given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"No valid bill number was given. {author_mention}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         try:
             bill = await find_bill(self.bot, bill_number)
         except MessageNotFound:
-            await inter.send(f"No bill with that index found. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"No bill with that index found. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
         # check that the bill isn't closed already
         if not any(reaction.emoji is emojis.void for reaction in bill.reactions):
-            await inter.send(f"Bill isn't void. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"Bill isn't void. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         await bill.remove_reaction(emojis.void, self.bot.user)
@@ -646,47 +626,44 @@ class Senate(commands.Cog):
         await bill.reply(f"Bill {bill_number} is unvoided."
                          f"\r\n{comment} {content[len(content) - 3]}")
 
-        await inter.send(f"Bill unmarked as void.", delete_after=10)
-
-    @commands.slash_command(name="withdraw",
-                            description="Withdraws the bill with the given number.")
+    @commands.command(name="withdraw", aliases=["Withdraw"],
+                      brief="Withdraws the bill with the given number.",
+                      help="Withdraws the bill with the given number. \n"
+                           "Marks the given bill as withdrawn using the appropriate emoji "
+                           "and replies to the bill informing about it's withdrawal.")
     @commands.check(check_senatorial_channels)
-    async def withdraw(self, inter: ApplicationCommandInteraction,
-                       bill_number: int = Param(gt=0, description="Index of the bill to withdraw"),
-                       comment: str = Param(default='',
-                                            description="A comment on the withdrawing of the bill")) -> None:
-        await inter.response.defer(ephemeral=True)
+    async def withdraw(self, ctx: commands.Context, bill_number: int, *, comment: str = ''):
+        await ctx.message.delete()
 
         # variable set up
-        author: str = inter.author.mention
-        command: str = f"/withdraw {bill_number}{(' ' + comment) if comment != '' else ''}"
+        author_mention: str = ctx.author.mention
         if comment != '':
             comment += ' '
 
         # check that bill_number is valid
         if bill_number > index.get_index():
-            await inter.send(f"No valid bill number was given. {author}"
-                             f"\r\n```{command}```")
+            await ctx.message.channel.send(f"No valid bill number was given. {author_mention}"
+                                           f"\r\n```{ctx.message.clean_content}```")
             return
 
         try:
             bill = await find_bill(self.bot, bill_number)
         except MessageNotFound:
-            await inter.send(f"No bill with that index found. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"No bill with that index found. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
         # check that the bill isn't closed already
         if await check_bill_concluded(bill):
-            await inter.send(f"Bill has already been concluded. {author}"
-                             f"\r\n```{command}```")
+            await ctx.channel.send(f"Bill has already been concluded. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         content: list[str] | None = bill.content.split(' ')
         bill_author: str | None = content[len(content) - 3]
         # error message
-        if author != bill_author:
-            await inter.send(f"This is not your Bill. {author}"
-                             f"\r\n```{command}```")
+        if author_mention != bill_author:
+            await ctx.channel.send(f"This is not your Bill. {author_mention}"
+                                   f"\r\n```{ctx.message.clean_content}```")
             return
 
         await bill.add_reaction(emojis.withdrawn)
@@ -694,5 +671,3 @@ class Senate(commands.Cog):
         content: list[str] = bill.content.split(' ')
         await bill.reply(f"Bill {bill_number} is withdrawn."
                          f"\r\n{comment}{content[len(content) - 3]}")
-
-        await inter.send(f"Bill marked as withdrawn.", delete_after=10)
