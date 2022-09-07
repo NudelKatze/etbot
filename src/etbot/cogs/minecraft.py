@@ -1,13 +1,13 @@
 import json
 
-from disnake import ApplicationCommandInteraction
+from disnake import ApplicationCommandInteraction, Message
 from disnake.ext import commands
 from disnake.ext.commands import Cog, slash_command
 from mcstatus import JavaServer
 from mcstatus.pinger import PingResponse
 from requests import Session, Response
 
-from vars import roles
+from vars import roles, messages
 
 email, password = "", ""
 
@@ -59,7 +59,8 @@ class Minecraft(Cog):
     @mc.sub_command(name="info", description="Responds with the Minecraft server information.")
     async def info(self, inter: ApplicationCommandInteraction) -> None:
         await inter.response.defer()
-        await inter.send("Minecraft server information.")
+        msg: Message = await messages.get_minecraft_info()
+        await inter.send(msg.content)
 
     @mc.sub_command(name="status", description="Responds with the Minecraft server status.")
     async def status(self, inter: ApplicationCommandInteraction) -> None:
