@@ -25,4 +25,4 @@ def initialize_testing_messages():
 
 def initialize_messages():
     this._support_id = 556837149924917249
-    this._minecraft_info_id = 692403470074118304
+    this._minecraft_info_id = 1017108933191676034
