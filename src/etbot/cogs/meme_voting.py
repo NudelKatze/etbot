@@ -1,8 +1,7 @@
 import logging
 
-from disnake import Message, ApplicationCommandInteraction
+from disnake import Message
 from disnake.ext import commands
-from disnake.ext.commands import Param
 
 import utils
 from vars import channels, emojis
@@ -52,28 +51,29 @@ class MemeVoting(commands.Cog):
         if message.channel in delete_noise_channels:
             await delete_noise(message)
 
-    @commands.slash_command(name="meme",
-                            description="Adds the meme voting reactions to the referenced message.")
-    async def meme(self, inter: ApplicationCommandInteraction,
-                   message_id: int = Param(gt=0, description="ID of the message to react to")) -> None:
+    @commands.command(name="meme", aliases=["Meme"],
+                      brief="Adds the meme voting reactions to the referenced message.",
+                      help="Adds the meme voting reactions to the referenced message.")
+    async def meme(self, ctx: commands.Context):
         # deletes meme command
-        await inter.response.defer(ephemeral=True)
+        await ctx.message.delete()
 
         # variable set up
-        msg: Message = await inter.channel.fetch_message(message_id)
+        msg: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
 
         # add reactions
         await vote_on_meme(msg)
 
-    @commands.slash_command(name="vote",
-                            description="Assembles a vote with the given text.")
-    async def vote(self, inter: ApplicationCommandInteraction,
-                   message_id: int = Param(gt=0, description="ID of the message to react to")) -> None:
+    @commands.command(name="vote", aliases=["Vote"],
+                      brief="Assembles a vote with the given text.",
+                      help="Assembles a vote with the given text. \n"
+                           "Including adding the reactions in the correct order.")
+    async def vote(self, ctx: commands.Context):
         # deletes vote command
-        await inter.response.defer()
+        await ctx.message.delete()
 
         # variable set up
-        msg: Message = await inter.channel.fetch_message(message_id)
+        msg: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
 
         # add reactions
         await msg.add_reaction(emojis.yes_vote)
