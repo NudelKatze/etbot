@@ -1,10 +1,11 @@
 import json
 
-from disnake import ApplicationCommandInteraction, Message
+from disnake import ApplicationCommandInteraction, Message, Embed, Colour
 from disnake.ext import commands
 from disnake.ext.commands import Cog, slash_command
 from mcstatus import JavaServer
 from mcstatus.pinger import PingResponse
+from mcstatus.querier import QueryResponse
 from requests import Session, Response
 
 from vars import roles, messages
@@ -29,6 +30,15 @@ def get_status() -> PingResponse | None:
     except ConnectionRefusedError:
         status = None
     return status
+
+
+def get_query() -> QueryResponse | None:
+    server = JavaServer.lookup("ETMC.mchost.pro")
+    try:
+        query = server.query()
+    except ConnectionRefusedError:
+        query = None
+    return query
 
 
 def is_online() -> bool:
@@ -66,11 +76,30 @@ class Minecraft(Cog):
     async def status(self, inter: ApplicationCommandInteraction) -> None:
         await inter.response.defer()
 
-        status = get_status()
-        if status is None:
-            await inter.send("The Minecraft server is offline.")
-        else:
-            await inter.send(f"The server has {status.players.online} players and replied in {int(status.latency)} ms.")
+        online: bool = is_online()
+        status: PingResponse | None = get_status()
+        query: QueryResponse | None = get_query()
+
+        embed = Embed(title="Minecraft Server Status",
+                      color=Colour.green() if online else Colour.red(),
+                      timestamp=inter.created_at)
+        embed.set_author(name="ETMC",
+                         icon_url="https://cdn.discordapp.com/attachments/1017105918263038083/1020856058736021624/server-icon.png")
+        embed.set_thumbnail(
+            url="https://cdn.discordapp.com/attachments/1017105918263038083/1020856058736021624/server-icon.png")
+        embed.set_footer(text="ETMC.mchost.pro")
+
+        embed.add_field(name="Latency:",
+                        value=f"{int(status.latency)} ms" if status is not None else "N/A",
+                        inline=True)
+        embed.add_field(name="Online:",
+                        value=f"{status.players.online}/999",
+                        inline=True)
+        embed.add_field(name="Players:",
+                        value=", ".join(query.players.names) if query.players.online > 0 else "N/A",
+                        inline=False)
+
+        await inter.send(embed=embed)
 
     @mc.sub_command(name="start", description="Starts the Minecraft server.")
     async def start(self, inter: ApplicationCommandInteraction) -> None:
