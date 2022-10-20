@@ -2,9 +2,10 @@ import datetime
 import os
 import uuid
 
-from disnake import Message, Member, User, Guild, Thread, File, NotFound, ApplicationCommandInteraction, Permissions
+from disnake import Message, Member, User, Guild, Thread, File, NotFound, ApplicationCommandInteraction, Permissions, \
+    TextChannel, VoiceChannel
 from disnake.abc import GuildChannel
-from disnake.ext.commands import Cog, Bot, Param, slash_command
+from disnake.ext.commands import Cog, Bot, slash_command, command, Context
 
 from vars import channels, roles, warnings
 
@@ -82,7 +83,7 @@ class Moderation(Cog):
         """
         Saves all messages from a user on a server.
         """
-        await inter.response.defer()
+        await inter.response.defer(ephemeral=True)
 
         if user is None:
             await inter.send("User not found.")
@@ -95,14 +96,18 @@ class Moderation(Cog):
 
         await inter.send(f"Saved {counter} messages.")
 
-    @slash_command(name="purge",
-                   description="Purges the amount of messages specified",
-                   default_member_permissions=Permissions(manage_messages=True))
-    async def purge_messages(self, inter: ApplicationCommandInteraction, amount: int = Param(gt=0)) -> None:
+    @command(name="purge",
+             description="Purges the amount of messages specified",
+             default_member_permissions=Permissions(manage_messages=True))
+    async def purge_messages(self, ctx: Context, amount: int) -> None:
         """
         Purges the amount of messages specified.
         """
-        await inter.response.defer()
+        await ctx.message.delete()
+
+        if amount < 0:
+            await ctx.send("You can't purge negative messages.")
+            return
 
         counter = 0
         time = f"{datetime.datetime.utcnow()}"
@@ -110,24 +115,28 @@ class Moderation(Cog):
 
         with open(filename, "w", encoding="utf8") as file:
             file.write(f"{time}:\n\n")
-            async for message in inter.channel.history(limit=amount):
+            async for message in ctx.channel.history(limit=amount):
                 counter += 1
                 file.write(await make_message_writeable(message))
 
-        await inter.channel.purge(limit=counter)  # TODO check if purging and then writing to file works
-        await inter.send(f"Purged {counter} messages.", ephemeral=True)
-        await channels.get_bot_log().send(f"Purged {counter} messages from {inter.channel.name}.", file=File(filename))
+        await ctx.channel.purge(limit=counter)  # TODO check if purging and then writing to file works
+        await ctx.send(f"Purged {counter} messages.")
+        await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
 
-    @slash_command(name="purgeafter",
-                   description="Purges the amount of messages (no amount -> all) after the referenced message.",
-                   default_member_permissions=Permissions(manage_messages=True))
-    async def purge_after(self, inter: ApplicationCommandInteraction, reference: Message,
-                          amount: int | None = Param(default=None, gt=0)) -> None:
+    @command(name="purgeafter",
+             description="Purges the amount of messages (no amount -> all) after the referenced message.",
+             default_member_permissions=Permissions(manage_messages=True))
+    async def purge_after(self, ctx: Context, amount: int | None) -> None:
         """
         Purges all messages after the referenced message.
         """
-        await inter.response.defer()
+        await ctx.message.delete()
 
+        if amount is not None and amount < 0:
+            await ctx.send("Amount must be positive.")
+            return
+
+        reference: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
         counter = 0
         time = f"{datetime.datetime.utcnow()}"
         filename = f"transcripts/{uuid.uuid4()}.txt"
@@ -135,30 +144,67 @@ class Moderation(Cog):
         with open(filename, "w", encoding="utf8") as file:
             file.write(f"{time}:\n\n")
 
-            history = await inter.channel.history(limit=100 if amount is None else amount, after=reference).flatten()
+            history = await ctx.channel.history(limit=100 if amount is None else amount, after=reference).flatten()
             for message in history:
                 counter += 1
                 file.write(await make_message_writeable(message))
 
             while len(history) == 100 and amount is None:
-                history = await inter.channel.history(limit=100, before=history[-1], after=reference).flatten()
+                history = await ctx.channel.history(limit=100, before=history[-1], after=reference).flatten()
                 for message in history:
                     counter += 1
                     file.write(await make_message_writeable(message))
 
-        await inter.channel.purge(limit=counter, after=reference, oldest_first=True)
-        await inter.send(f"Purged {counter} messages.", ephemeral=True)
-        await channels.get_bot_log().send(f"Purged {counter} messages from {inter.channel.name}.", file=File(filename))
+        await ctx.channel.purge(limit=counter, after=reference, oldest_first=True)
+        await ctx.send(f"Purged {counter} messages.")
+        await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
 
-    @slash_command(name="purgebefore",
-                   description="Purges the amount of messages specified",
-                   default_member_permissions=Permissions(manage_messages=True))
-    async def purge_before(self, inter: ApplicationCommandInteraction, amount: int = Param(gt=0),
-                           reference: Message = Param(gt=0)) -> None:
+    @command(name="purgebefore",
+             description="Purges the amount of messages specified",
+             default_member_permissions=Permissions(manage_messages=True))
+    async def purge_before(self, ctx: Context, amount: int) -> None:
         """
         Purges the amount of messages specified before the referenced message.
         """
-        await inter.response.defer()
+        await ctx.message.delete()
+
+        if amount < 0:
+            await ctx.send("Amount must be positive.")
+            return
+
+        reference: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+        counter = 0
+        time = f"{datetime.datetime.utcnow()}"
+        filename = f"transcripts/{uuid.uuid4()}.txt"
+
+        with open(filename, "w", encoding="utf8") as file:
+            file.write(f"{time}:\n\n")
+
+            async for message in ctx.channel.history(limit=amount, before=reference):
+                counter += 1
+                file.write(await make_message_writeable(message))
+
+        await ctx.channel.purge(limit=counter, before=reference)
+        await ctx.send(f"Purged {counter} messages.")
+        await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
+
+    @command(name="purgeuserchannel", aliases=["purgeUserChannel"],
+             description="Purges the amount of messages specified from the given user in this channel.",
+             default_member_permissions=Permissions(manage_messages=True))
+    async def purge_user_channel(self, ctx: Context, user: User | Member,
+                                 amount: int | None = None) -> None:
+        """
+        Purges the amount of messages specified from the given user in this channel.
+        """
+        await ctx.message.delete()
+
+        if amount is not None and amount < 0:
+            await ctx.send("Amount must be positive.")
+            return
+
+        if user is None:
+            await ctx.send("User not found.")
+            return
 
         counter = 0
         time = f"{datetime.datetime.utcnow()}"
@@ -167,14 +213,53 @@ class Moderation(Cog):
         with open(filename, "w", encoding="utf8") as file:
             file.write(f"{time}:\n\n")
 
-            async for message in inter.channel.history(limit=amount, before=reference):
-                counter += 1
-                file.write(await make_message_writeable(message))
+            while amount is None or counter < amount:
+                async for message in ctx.channel.history(limit=amount):
+                    if message.author == user:
+                        counter += 1
+                        file.write(await make_message_writeable(message))
+                    if counter == amount:
+                        break
+                if amount is None:
+                    break
 
-        await inter.channel.purge(limit=counter, before=reference)
-        await inter.send(f"Purged {counter} messages.", ephemeral=True)
-        await channels.get_bot_log().send(f"Purged {counter} messages from {inter.channel.name}.", file=File(filename))
-        # os.remove(filename)
+        await ctx.channel.purge(limit=counter, check=lambda m: m.author == user)
+        await ctx.send(f"Purged {counter} messages.")
+        await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
+
+    @command(name="purgeuserall", aliases=["purgeUserAll"],
+             description="Purges the amount of messages specified from the given user in all channels. SLOW!",
+             default_member_permissions=Permissions(manage_messages=True))
+    async def purge_user_all(self, ctx: Context, user: User | Member) -> None:
+        """
+        Purges the amount of messages specified from the given user in all channels. SLOW!
+        """
+        await ctx.message.delete()
+
+        if user is None:
+            await ctx.send("User not found.")
+            return
+
+        counter = 0
+        time = f"{datetime.datetime.utcnow()}"
+        filename = f"transcripts/{uuid.uuid4()}.txt"
+
+        with open(filename, "w", encoding="utf8") as file:
+            file.write(f"{time}:\n\n")
+
+            for channel in ctx.guild.channels:
+                if not isinstance(channel, TextChannel | VoiceChannel | Thread):
+                    continue
+                file.write(f"#{channel.name}:\n")
+                async for message in channel.history(limit=None):
+                    if message.author == user:
+                        counter += 1
+                        file.write(await make_message_writeable(message))
+                        await message.delete()
+                await channel.purge(limit=None, check=lambda m: m.author == user)
+
+        await ctx.send(f"Purged {counter} messages.")
+        await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.guild.name}.", file=File(filename))
 
     @slash_command(name="warn",
                    description="Warns a user.",
