@@ -135,6 +135,9 @@ class Moderation(Cog):
         if amount is not None and amount < 0:
             await ctx.send("Amount must be positive.")
             return
+        if ctx.message.reference is None:
+            await ctx.send("You need to reference a message.")
+            return
 
         reference: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
         counter = 0
@@ -170,6 +173,9 @@ class Moderation(Cog):
 
         if amount < 0:
             await ctx.send("Amount must be positive.")
+            return
+        if ctx.message.reference is None:
+            await ctx.send("You must reference a message.")
             return
 
         reference: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
