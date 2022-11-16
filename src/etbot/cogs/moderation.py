@@ -128,7 +128,7 @@ class Moderation(Cog):
              default_member_permissions=Permissions(manage_messages=True))
     async def purge_after(self, ctx: Context, amount: int | None) -> None:
         """
-        Purges all messages after the referenced message.
+        Purges the amount of messages specified after the referenced message.
         """
         await ctx.message.delete()
 
@@ -163,7 +163,7 @@ class Moderation(Cog):
         await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
 
     @command(name="purgebefore",
-             description="Purges the amount of messages specified",
+             description="Purges the amount of messages specified before the referenced message",
              default_member_permissions=Permissions(manage_messages=True))
     async def purge_before(self, ctx: Context, amount: int) -> None:
         """
@@ -195,12 +195,12 @@ class Moderation(Cog):
         await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
 
     @command(name="purgeuserchannel", aliases=["purgeUserChannel"],
-             description="Purges the amount of messages specified from the given user in this channel.",
+             description="Purges the amount of messages specified (no amount -> all) from the given user in this channel.",
              default_member_permissions=Permissions(manage_messages=True))
     async def purge_user_channel(self, ctx: Context, user: User | Member,
                                  amount: int | None = None) -> None:
         """
-        Purges the amount of messages specified from the given user in this channel.
+        Purges the amount of messages specified (no amount -> all) from the given user in this channel.
         """
         await ctx.message.delete()
 
@@ -234,11 +234,11 @@ class Moderation(Cog):
         await channels.get_bot_log().send(f"Purged {counter} messages from {ctx.channel.name}.", file=File(filename))
 
     @command(name="purgeuserall", aliases=["purgeUserAll"],
-             description="Purges the amount of messages specified from the given user in all channels. SLOW!",
+             description="Purges all messages from the given user in all channels. VERY SLOW!",
              default_member_permissions=Permissions(manage_messages=True))
     async def purge_user_all(self, ctx: Context, user: User | Member) -> None:
         """
-        Purges the amount of messages specified from the given user in all channels. SLOW!
+        Purges all messages from the given user in all channels. VERY SLOW!
         """
         await ctx.message.delete()
 
