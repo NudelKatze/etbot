@@ -339,7 +339,9 @@ class Senate(commands.Cog):
             return
 
         content: list[str] | None = original.content.split(' ')
-        bill_author: str | None = content[len(content) - 3]
+        bill_author: str = content[len(content) - 2]
+        if roles.tribune in original.role_mentions:
+            bill_author: str = content[len(content) - 3]
         bill_number: str | None = None
         if content[2] == 'Amendment' and content[3] == 'to':
             bill_number = content[5]
