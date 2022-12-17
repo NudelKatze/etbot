@@ -6,6 +6,7 @@ from disnake import User, Member
 from disnake.ext import commands
 
 _warnings: dict = {}
+_old_warnings: dict = {}
 
 
 class DiscordWarning:
@@ -145,6 +146,9 @@ def update_warnings() -> None:
     for key, value in _warnings.items():
         for warning in value:
             if warning.expires < datetime.datetime.utcnow():
+                if key not in _old_warnings:
+                    _old_warnings[key] = []
+                _old_warnings[key].append(warning)
                 _warnings[key].remove(warning)
 
 
@@ -163,6 +167,15 @@ def write_warnings() -> None:
     """
     Writes the warnings to the file.
     """
+    old_warnings_json: dict = {}
+    for key, value in _old_warnings.items():
+        old_warnings_json[key] = []
+        for warning in value:
+            old_warnings_json[key].append(warning.to_json())
+
+    with open("old_warnings.json", "w", encoding="utf-8") as file:
+        json.dump(old_warnings_json, file, indent=4)
+
     warnings_json: dict = {}
     for key, value in _warnings.items():
         warnings_json[key] = []
@@ -177,9 +190,18 @@ async def init_warnings(bot: commands.Bot) -> None:
     """
     Reads the warnings from the file.
     """
+    with open("old_warnings.json", "r", encoding="utf-8") as file:
+        old_warnings_json = json.load(file)
     with open("warnings.json", "r", encoding="utf-8") as file:
         warnings_json = json.load(file)
-    global _warnings
+
+    global _warnings, _old_warnings
+
+    for key, value in old_warnings_json.items():
+        _old_warnings[int(key)] = []
+        for warning_json in value:
+            warning: DiscordWarning = await from_json(warning_json, bot)
+            _old_warnings[int(key)].append(warning)
 
     for key, value in warnings_json.items():
         _warnings[int(key)] = []

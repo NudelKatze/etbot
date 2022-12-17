@@ -1,4 +1,4 @@
-disnake==2.5.2
+disnake==2.7.0
 requests==2.28.*
-mcstatus==9.4.*
-setuptools==60.8.*
+mcstatus==10.0.1
+setuptools==65.6.3

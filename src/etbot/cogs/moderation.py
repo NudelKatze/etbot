@@ -3,11 +3,13 @@ import os
 import uuid
 
 from disnake import Message, Member, User, Guild, Thread, File, NotFound, ApplicationCommandInteraction, Permissions, \
-    TextChannel, VoiceChannel
+    TextChannel, VoiceChannel, SelectOption, Embed
 from disnake.abc import GuildChannel
 from disnake.ext.commands import Cog, Bot, slash_command, command, Context
+from disnake.ui import View, Select, user_select
 
 from vars import channels, roles, warnings
+from vars.warnings import DiscordWarning
 
 
 def setup(bot: Bot) -> None:
@@ -69,6 +71,36 @@ async def messages_by_user_in_channel(channel: GuildChannel | Thread, user: User
                     file.write(f"{message.id}\n{message.created_at}\n{message.clean_content}\n\n\n")
 
     return counter
+
+
+class WarningView(View):
+    users: list[User | Member] = []
+    options: list[SelectOption] = []
+
+    def __init__(self):
+        super().__init__()
+
+    @user_select(placeholder="Select a user", row=0)
+    async def select_callback(self, select: Select, interaction: ApplicationCommandInteraction):
+        await interaction.response.defer()
+        user: User | Member = select.values[0]
+        user_warnings: list[DiscordWarning] | None = warnings.get_warnings_by_user(user)
+
+        embed: Embed = Embed(
+            title=f"{user.name}#{user.discriminator} has {0 if user_warnings is None or len(user_warnings) == 0 else len(user_warnings)} Warnings",
+            color=0x00ff00 if user_warnings is None or len(user_warnings) == 0 else 0xff0000,
+            timestamp=interaction.created_at)
+        embed.set_author(name=user.name, icon_url=user.avatar.url)
+
+        if user_warnings is not None:
+            for warning in user_warnings:
+                embed.add_field(name=f"ID: {warning.id}",
+                                value=f"{warning.reason}\n"
+                                      f"Created at {warning.given}\n"
+                                      f"Expires at {warning.expires}",
+                                inline=False)
+
+        await interaction.edit_original_message(view=self, embed=embed)
 
 
 class Moderation(Cog):
@@ -315,24 +347,15 @@ class Moderation(Cog):
     @slash_command(name="warnings",
                    description="Returns all warnings for the user.",
                    default_member_permissions=Permissions(ban_members=True))
-    async def warnings(self, inter: ApplicationCommandInteraction, user: User | Member) -> None:
+    async def warnings(self, inter: ApplicationCommandInteraction) -> None:
         """
         Returns all warnings for a user
         """
         await inter.response.defer()
 
-        user_warnings = warnings.get_warnings_by_user(user)
+        warnings_view: WarningView = WarningView()
 
-        if not user_warnings:
-            await inter.send(f"{user.name} has no warnings.")
-            return
-
-        warnings_message: str = f"{user.name} has {len(user_warnings)} warnings:"
-        for warning in user_warnings:
-            warnings_message += f"\n{warning}" \
-                                f"\n**--------------------------------------------------**"
-
-        await inter.send(warnings_message)
+        await inter.send(view=warnings_view)
 
     @slash_command(name="allwarnings",
                    description="Returns all warnings.",
@@ -343,12 +366,15 @@ class Moderation(Cog):
         """
         await inter.response.defer()
 
-        warnings_message: str = "All warnings:"
-        for warning in warnings.get_all_warnings():
-            warnings_message += f"\n{warning}" \
-                                f"\n**--------------------------------------------------**"
+        users: list[User | Member] = []
 
-        await inter.send(warnings_message)
+        for key, value in warnings._warnings.items():
+            if len(value) > 0:
+                users.append(await inter.guild.getch_member(int(key)))
+
+        warnings_view: WarningView = WarningView()
+
+        await inter.send(view=warnings_view)
 
     @slash_command(name="mywarnings",
                    description="Returns all of your warnings.")

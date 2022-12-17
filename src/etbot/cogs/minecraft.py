@@ -24,7 +24,7 @@ def setup(bot):
 
 
 def get_status() -> PingResponse | None:
-    server = JavaServer.lookup("ETMC.mchost.pro")
+    server: JavaServer = JavaServer.lookup("ETMC.mchost.pro")
     try:
         status = server.status()
     except ConnectionRefusedError:

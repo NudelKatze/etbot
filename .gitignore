@@ -216,4 +216,5 @@ fabric.properties
 config.json
 index.txt
 warnings.json
+old_warnings.json
 transcripts/
