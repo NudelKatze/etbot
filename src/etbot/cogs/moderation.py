@@ -134,6 +134,12 @@ class AllWarningView(View):
             if len(user_warnings) == 0:
                 continue
             user: User | Member = await interaction.guild.getch_member(int(user_id))
+            # Temporary fix for users that left the server
+            if user is None:
+                embed.add_field(name=f"ID: {user_id}",
+                                value=f"{len(user_warnings)} Warnings",
+                                inline=False)
+                continue
             embed.add_field(name=f"{user.name}#{user.discriminator}",
                             value=f"{len(user_warnings)} Warnings",
                             inline=False)
