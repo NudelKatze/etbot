@@ -6,7 +6,7 @@ from disnake import Message, Member, User, Guild, Thread, File, NotFound, Applic
     TextChannel, VoiceChannel, SelectOption, Embed
 from disnake.abc import GuildChannel
 from disnake.ext.commands import Cog, Bot, slash_command, command, Context
-from disnake.ui import View, Select, user_select
+from disnake.ui import View, Select, user_select, string_select
 
 from vars import channels, roles, warnings
 from vars.warnings import DiscordWarning
@@ -73,11 +73,11 @@ async def messages_by_user_in_channel(channel: GuildChannel | Thread, user: User
     return counter
 
 
-class WarningView(View):
-    users: list[User | Member] = []
-    options: list[SelectOption] = []
+class UserWarningView(View):
 
     def __init__(self):
+        self.users: list[User | Member] = []
+        self.options: list[SelectOption] = []
         super().__init__()
 
     @user_select(placeholder="Select a user", row=0)
@@ -99,6 +99,44 @@ class WarningView(View):
                                       f"Created at {warning.given}\n"
                                       f"Expires at {warning.expires}",
                                 inline=False)
+
+        await interaction.edit_original_message(view=self, embed=embed)
+
+
+class AllWarningView(View):
+    options: list[SelectOption] = [
+        SelectOption(label="Warnings", value="warnings", description="List of all Users that currently hold warnings."),
+        SelectOption(label="Old Warnings", value="old_warnings",
+                     description="[EXPERIMENTAL] List of all Users that have had warnings in the past. [EXPERIMENTAL]"),
+    ]
+
+    def __init__(self):
+        super().__init__()
+
+    @string_select(placeholder="Warnings", options=options)
+    async def select_callback(self, select: Select, interaction: ApplicationCommandInteraction):
+        await interaction.response.defer()
+        warnings_dict: dict = {}
+
+        if select.values[0] == "warnings":
+            warnings_dict = warnings._warnings
+        elif select.values[0] == "old_warnings":
+            warnings_dict = warnings._old_warnings
+        else:
+            return
+
+        embed: Embed = Embed(
+            title=f"All Warnings" if select.values[0] == "warnings" else f"Old Warnings",
+            color=0xff0000 if select.values[0] == "warnings" else 0xff8000,
+            timestamp=interaction.created_at)
+
+        for user_id, user_warnings in warnings_dict.items():
+            if len(user_warnings) == 0:
+                continue
+            user: User | Member = await interaction.guild.getch_member(int(user_id))
+            embed.add_field(name=f"{user.name}#{user.discriminator}",
+                            value=f"{len(user_warnings)} Warnings",
+                            inline=False)
 
         await interaction.edit_original_message(view=self, embed=embed)
 
@@ -353,7 +391,7 @@ class Moderation(Cog):
         """
         await inter.response.defer()
 
-        warnings_view: WarningView = WarningView()
+        warnings_view: UserWarningView = UserWarningView()
 
         await inter.send(view=warnings_view)
 
@@ -372,7 +410,7 @@ class Moderation(Cog):
             if len(value) > 0:
                 users.append(await inter.guild.getch_member(int(key)))
 
-        warnings_view: WarningView = WarningView()
+        warnings_view: AllWarningView = AllWarningView()
 
         await inter.send(view=warnings_view)
 

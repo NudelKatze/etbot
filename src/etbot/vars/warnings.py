@@ -125,6 +125,17 @@ def get_all_warnings() -> list[DiscordWarning]:
     return warnings
 
 
+def get_all_old_warnings() -> list[DiscordWarning]:
+    """
+    Returns all old warnings.
+    """
+    old_warnings: list[DiscordWarning] = []
+    for value in _old_warnings.values():
+        old_warnings.extend(value)
+
+    return old_warnings
+
+
 def get_warning(id: uuid.UUID) -> DiscordWarning:
     """
     Gets a warning.
