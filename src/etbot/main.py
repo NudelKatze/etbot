@@ -5,7 +5,7 @@ import os
 import sys
 
 from disnake import Intents
-from disnake.ext.commands import Bot
+from disnake.ext.commands import Bot, CommandSyncFlags
 
 from vars import channels, emojis, roles, messages, warnings
 
@@ -19,7 +19,7 @@ intents: Intents = Intents(messages=True, message_content=True, guilds=True, gui
 bot: Bot = Bot(
     command_prefix='&',
     intents=intents,
-    sync_commands_debug=True,
+    command_sync_flags=CommandSyncFlags.all(),
     test_guilds=test_guilds
 )
 
