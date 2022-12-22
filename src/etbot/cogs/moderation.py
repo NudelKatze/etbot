@@ -83,6 +83,9 @@ class UserWarningView(View):
     @user_select(placeholder="Select a user", row=0)
     async def select_callback(self, select: Select, interaction: ApplicationCommandInteraction):
         await interaction.response.defer()
+        if not roles.check_is_staff(interaction):
+            await interaction.followup.send("Only staff are allowed to use this.", ephemeral=True)
+            return
         user: User | Member = select.values[0]
         user_warnings: list[DiscordWarning] | None = warnings.get_warnings_by_user(user)
 
@@ -116,6 +119,9 @@ class AllWarningView(View):
     @string_select(placeholder="Warnings", options=options)
     async def select_callback(self, select: Select, interaction: ApplicationCommandInteraction):
         await interaction.response.defer()
+        if not roles.check_is_staff(interaction):
+            await interaction.followup.send("Only staff are allowed to use this.", ephemeral=True)
+            return
         warnings_dict: dict = {}
 
         if select.values[0] == "warnings":
