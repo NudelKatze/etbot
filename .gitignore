@@ -217,4 +217,5 @@ config.json
 index.txt
 warnings.json
 old_warnings.json
+roles.json
 transcripts/
