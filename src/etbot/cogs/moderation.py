@@ -83,6 +83,9 @@ class UserWarningView(View):
     @user_select(placeholder="Select a user", row=0)
     async def select_callback(self, select: Select, interaction: ApplicationCommandInteraction):
         await interaction.response.defer()
+        if not roles.check_is_staff(interaction):
+            await interaction.followup.send("Only staff are allowed to use this.", ephemeral=True)
+            return
         user: User | Member = select.values[0]
         user_warnings: list[DiscordWarning] | None = warnings.get_warnings_by_user(user)
 
@@ -116,6 +119,9 @@ class AllWarningView(View):
     @string_select(placeholder="Warnings", options=options)
     async def select_callback(self, select: Select, interaction: ApplicationCommandInteraction):
         await interaction.response.defer()
+        if not roles.check_is_staff(interaction):
+            await interaction.followup.send("Only staff are allowed to use this.", ephemeral=True)
+            return
         warnings_dict: dict = {}
 
         if select.values[0] == "warnings":
@@ -430,13 +436,18 @@ class Moderation(Cog):
 
         user_warnings = warnings.get_warnings_by_user(inter.author)
 
-        if not user_warnings:
-            await inter.send(f"You has no warnings.")
-            return
+        embed: Embed = Embed(
+            title=f"{inter.author.name}#{inter.author.discriminator} has {0 if user_warnings is None or len(user_warnings) == 0 else len(user_warnings)} Warnings",
+            color=0x00ff00 if user_warnings is None or len(user_warnings) == 0 else 0xff0000,
+            timestamp=inter.created_at)
+        embed.set_author(name=inter.author.name, icon_url=inter.author.avatar.url)
 
-        warnings_message: str = f"{inter.author.name} has {len(user_warnings)} warnings:"
-        for warning in user_warnings:
-            warnings_message += f"\n{warning}" \
-                                f"\n**--------------------------------------------------**"
+        if user_warnings is not None:
+            for warning in user_warnings:
+                embed.add_field(name=f"ID: {warning.id}",
+                                value=f"{warning.reason}\n"
+                                      f"Created at {warning.given}\n"
+                                      f"Expires at {warning.expires}",
+                                inline=False)
 
-        await inter.send(warnings_message, ephemeral=True)
+        await inter.send(embed=embed, ephemeral=True)
