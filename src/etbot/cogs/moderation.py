@@ -76,9 +76,9 @@ async def messages_by_user_in_channel(channel: GuildChannel | Thread, user: User
 class UserWarningView(View):
 
     def __init__(self):
+        super().__init__()
         self.users: list[User | Member] = []
         self.options: list[SelectOption] = []
-        super().__init__()
 
     @user_select(placeholder="Select a user", row=0)
     async def select_callback(self, select: Select, interaction: ApplicationCommandInteraction):
@@ -93,7 +93,8 @@ class UserWarningView(View):
             title=f"{user.name}#{user.discriminator} has {0 if user_warnings is None or len(user_warnings) == 0 else len(user_warnings)} Warnings",
             color=0x00ff00 if user_warnings is None or len(user_warnings) == 0 else 0xff0000,
             timestamp=interaction.created_at)
-        embed.set_author(name=user.name, icon_url=user.avatar.url)
+        embed.set_author(name=user.name,
+                         icon_url=user.avatar.url if user.avatar is not None else user.default_avatar.url)
 
         if user_warnings is not None:
             for warning in user_warnings:
