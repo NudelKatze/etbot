@@ -421,9 +421,8 @@ class Senate(commands.Cog):
         await bill.add_reaction(emojis.bill_closed)
 
         content: list[str] = bill.content.split(' ')
-        bill_author: str = content[len(content) - 2]
-        if roles.tribune in bill.role_mentions:
-            bill_author: str = content[len(content) - 3]
+        bill_author: str = content[len(content) - 3] if roles.tribune in bill.role_mentions else content[
+            len(content) - 2]
         await bill.reply(f"Bill {bill_number} passes."
                          f"\n{comment} {bill_author}")
 
@@ -472,9 +471,8 @@ class Senate(commands.Cog):
         await bill.add_reaction(emojis.bill_closed)
 
         content: list[str] = bill.content.split(' ')
-        bill_author: str = content[len(content) - 2]
-        if roles.tribune in bill.role_mentions:
-            bill_author: str = content[len(content) - 3]
+        bill_author: str = content[len(content) - 3] if roles.tribune in bill.role_mentions else content[
+            len(content) - 2]
         await bill.reply(f"Bill {bill_number} does not pass."
                          f"\n{comment} {bill_author}")
 
@@ -514,9 +512,8 @@ class Senate(commands.Cog):
         await bill.add_reaction(emojis.imperial_authority)
 
         content: list[str] = bill.content.split(' ')
-        bill_author: str = content[len(content) - 2]
-        if roles.tribune in bill.role_mentions:
-            bill_author: str = content[len(content) - 3]
+        bill_author: str = content[len(content) - 3] if roles.tribune in bill.role_mentions else content[
+            len(content) - 2]
         await bill.reply(f"Bill {bill_number} is vetoed."
                          f"\r\n{comment} {bill_author}")
 
@@ -556,9 +553,8 @@ class Senate(commands.Cog):
         await bill.add_reaction(emojis.imperial_mandate)
 
         content: list[str] = bill.content.split(' ')
-        bill_author: str = content[len(content) - 2]
-        if roles.tribune in bill.role_mentions:
-            bill_author: str = content[len(content) - 3]
+        bill_author: str = content[len(content) - 3] if roles.tribune in bill.role_mentions else content[
+            len(content) - 2]
         await bill.reply(f"Bill {bill_number} is forced through."
                          f"\r\n{comment} {bill_author}")
 
@@ -598,9 +594,8 @@ class Senate(commands.Cog):
         await bill.add_reaction(emojis.void)
 
         content: list[str] = bill.content.split(' ')
-        bill_author: str = content[len(content) - 2]
-        if roles.tribune in bill.role_mentions:
-            bill_author: str = content[len(content) - 3]
+        bill_author: str = content[len(content) - 3] if roles.tribune in bill.role_mentions else content[
+            len(content) - 2]
         await bill.reply(f"Bill {bill_number} is void."
                          f"\r\n{comment} {bill_author}")
 
@@ -640,9 +635,8 @@ class Senate(commands.Cog):
         await bill.remove_reaction(emojis.void, self.bot.user)
 
         content: list[str] = bill.content.split(' ')
-        bill_author: str = content[len(content) - 2]
-        if roles.tribune in bill.role_mentions:
-            bill_author: str = content[len(content) - 3]
+        bill_author: str = content[len(content) - 3] if roles.tribune in bill.role_mentions else content[
+            len(content) - 2]
         await bill.reply(f"Bill {bill_number} is unvoided."
                          f"\r\n{comment} {bill_author}")
 
@@ -679,7 +673,8 @@ class Senate(commands.Cog):
             return
 
         content: list[str] | None = bill.content.split(' ')
-        bill_author: str | None = content[len(content) - 3]
+        bill_author: str = content[len(content) - 3] if roles.tribune in bill.role_mentions else content[
+            len(content) - 2]
         # error message
         if author_mention != bill_author:
             await ctx.channel.send(f"This is not your Bill. {author_mention}"
