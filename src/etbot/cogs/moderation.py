@@ -73,6 +73,25 @@ async def messages_by_user_in_channel(channel: GuildChannel | Thread, user: User
     return counter
 
 
+def create_user_warnings_embed(user: User | Member, user_warnings: list[DiscordWarning] | None,
+                               created_at: datetime) -> Embed:
+    embed: Embed = Embed(
+        title=f"{user.name}#{user.discriminator} has {0 if user_warnings is None or len(user_warnings) == 0 else len(user_warnings)} Warnings",
+        color=0x00ff00 if user_warnings is None or len(user_warnings) == 0 else 0xff0000,
+        timestamp=created_at)
+    embed.set_author(name=user.name, icon_url=user.avatar.url if user.avatar is not None else user.default_avatar.url)
+
+    if user_warnings is not None:
+        for warning in user_warnings:
+            embed.add_field(name=f"ID: {warning.id}",
+                            value=f"{warning.reason}\n"
+                                  f"Created at {warning.given}\n"
+                                  f"Expires at {warning.expires}",
+                            inline=False)
+
+    return embed
+
+
 class UserWarningView(View):
 
     def __init__(self):
@@ -81,30 +100,17 @@ class UserWarningView(View):
         self.options: list[SelectOption] = []
 
     @user_select(placeholder="Select a user", row=0)
-    async def select_callback(self, select: Select, interaction: ApplicationCommandInteraction):
-        await interaction.response.defer()
-        if not roles.check_is_staff(interaction):
-            await interaction.followup.send("Only staff are allowed to use this.", ephemeral=True)
+    async def select_callback(self, select: Select, inter: ApplicationCommandInteraction):
+        await inter.response.defer()
+        if not roles.check_is_staff(inter):
+            await inter.followup.send("Only staff are allowed to use this.", ephemeral=True)
             return
+
         user: User | Member = select.values[0]
         user_warnings: list[DiscordWarning] | None = warnings.get_warnings_by_user(user)
+        embed: Embed = create_user_warnings_embed(user, user_warnings, inter.created_at)
 
-        embed: Embed = Embed(
-            title=f"{user.name}#{user.discriminator} has {0 if user_warnings is None or len(user_warnings) == 0 else len(user_warnings)} Warnings",
-            color=0x00ff00 if user_warnings is None or len(user_warnings) == 0 else 0xff0000,
-            timestamp=interaction.created_at)
-        embed.set_author(name=user.name,
-                         icon_url=user.avatar.url if user.avatar is not None else user.default_avatar.url)
-
-        if user_warnings is not None:
-            for warning in user_warnings:
-                embed.add_field(name=f"ID: {warning.id}",
-                                value=f"{warning.reason}\n"
-                                      f"Created at {warning.given}\n"
-                                      f"Expires at {warning.expires}",
-                                inline=False)
-
-        await interaction.edit_original_message(view=self, embed=embed)
+        await inter.edit_original_message(view=self, embed=embed)
 
 
 class AllWarningView(View):
@@ -435,20 +441,8 @@ class Moderation(Cog):
         """
         await inter.response.defer()
 
-        user_warnings = warnings.get_warnings_by_user(inter.author)
-
-        embed: Embed = Embed(
-            title=f"{inter.author.name}#{inter.author.discriminator} has {0 if user_warnings is None or len(user_warnings) == 0 else len(user_warnings)} Warnings",
-            color=0x00ff00 if user_warnings is None or len(user_warnings) == 0 else 0xff0000,
-            timestamp=inter.created_at)
-        embed.set_author(name=inter.author.name, icon_url=inter.author.avatar.url)
-
-        if user_warnings is not None:
-            for warning in user_warnings:
-                embed.add_field(name=f"ID: {warning.id}",
-                                value=f"{warning.reason}\n"
-                                      f"Created at {warning.given}\n"
-                                      f"Expires at {warning.expires}",
-                                inline=False)
+        user: User | Member = inter.author
+        user_warnings = warnings.get_warnings_by_user(user)
+        embed: Embed = create_user_warnings_embed(user, user_warnings, inter.created_at)
 
         await inter.send(embed=embed, ephemeral=True)
