@@ -54,8 +54,13 @@ class MemeVoting(commands.Cog):
         if message.author.bot:
             return
 
-        meme_channels = [channels.get_memes(), channels.get_religious_memes()]
-        delete_noise_channels = [channels.get_out_of_context_screenshots()]
+        meme_channels = []
+        delete_noise_channels = []
+        try:
+            meme_channels = [channels.get_memes(), channels.get_religious_memes()]
+            delete_noise_channels = [channels.get_out_of_context_screenshots()]
+        except Exception as e:
+            logging.exception(e)
 
         # meme voting
         if message.channel in meme_channels:
