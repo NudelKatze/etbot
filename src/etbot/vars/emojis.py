@@ -9,6 +9,7 @@ no_vote = None
 abstain_vote = None
 recycle = '♻'
 ear_with_hearing_aid = '🦻'
+question = '❓'
 one, two, three, four, five, six, seven, eight, nine, ten = '1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'
 options = [None, None, None, None, None, None, None, None, None, None]
 bill_closed = None

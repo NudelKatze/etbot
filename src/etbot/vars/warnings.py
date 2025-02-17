@@ -59,11 +59,11 @@ def generate_expiration(user: User) -> datetime.datetime:
 
     match len(user_warnings):
         case 0:
-            return datetime.datetime.utcnow() + datetime.timedelta(days=30)
+            return datetime.datetime.utcnow() + datetime.timedelta(weeks=5217)
         case 1:
-            return user_warnings[-1].expires + datetime.timedelta(days=90)
+            return user_warnings[-1].expires + datetime.timedelta(weeks=5217)
         case 2:
-            return user_warnings[-1].expires + datetime.timedelta(days=1)
+            return user_warnings[-1].expires + datetime.timedelta(weeks=5217)
         case _:
             raise Exception(f"User {user.name} has more than 2, or negative warnings.")
 

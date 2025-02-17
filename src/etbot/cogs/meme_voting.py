@@ -21,6 +21,19 @@ async def vote_on_meme(message: Message):
     await message.add_reaction(emojis.no_vote)
     await message.add_reaction(emojis.recycle)
     await message.add_reaction(emojis.ear_with_hearing_aid)
+    await message.add_reaction(emojis.question)
+
+
+async def remove_votes_on_meme(message: Message):
+    if not utils.has_embed_or_attachment(message):
+        logging.debug(f"No embed or attachment found in message with ID {message.id}")
+        return
+
+    await message.clear_reaction(emojis.yes_vote)
+    await message.clear_reaction(emojis.no_vote)
+    await message.clear_reaction(emojis.recycle)
+    await message.clear_reaction(emojis.ear_with_hearing_aid)
+    await message.clear_reaction(emojis.question)
 
 
 async def delete_noise(message: Message):
@@ -63,6 +76,19 @@ class MemeVoting(commands.Cog):
 
         # add reactions
         await vote_on_meme(msg)
+
+    @commands.command(name="unmeme", aliases=["Unmeme"],
+                      brief="From the meme voting reactions from the referenced message.",
+                      help="Removes the meme voting reactions from the referenced message.")
+    async def unmeme(self, ctx: commands.Context):
+        # deletes meme command
+        await ctx.message.delete()
+
+        # variable set up
+        msg: Message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+
+        # add reactions
+        await remove_votes_on_meme(msg)
 
     @commands.command(name="vote", aliases=["Vote"],
                       brief="Assembles a vote with the given text.",
