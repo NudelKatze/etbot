@@ -1,5 +1,4 @@
 import logging
-from warnings import catch_warnings
 
 from disnake import Message
 from disnake.ext import commands
